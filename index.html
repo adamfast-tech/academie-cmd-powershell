@@ -8520,7 +8520,7 @@ DESCRIPTION COURTE
 </script>
 <script>window.ACADEMIE_SUPABASE={"url": "https://cfcygkmrpxcjideljxxo.supabase.co", "key": "sb_publishable_i68zVFGjYsUyKef3b3p4Zw_x_COmUOS"};</script>
 <script src="vendor/supabase-2.117.0.min.js"></script>
-<script>if('serviceWorker' in navigator&&location.protocol==='https:'){window.addEventListener('load',function(){navigator.serviceWorker.register('sw.js').catch(function(){});});}</script>
+<script>if('serviceWorker' in navigator&&location.protocol==='https:'){var hadCtl=!!navigator.serviceWorker.controller,reloaded=false;navigator.serviceWorker.addEventListener('controllerchange',function(){if(hadCtl&&!reloaded){reloaded=true;location.reload();}});window.addEventListener('load',function(){navigator.serviceWorker.register('sw.js',{updateViaCache:'none'}).then(function(r){r.update();}).catch(function(){});});}</script>
 <script>
 window.AcademieSim=(function(){
 'use strict';

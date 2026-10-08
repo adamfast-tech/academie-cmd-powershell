@@ -53,7 +53,9 @@ art = body()
 cfg = '<script>window.ACADEMIE_SUPABASE=' + json.dumps(SUPABASE) + ';</script>\n'
 cfg += '<script src="%s"></script>\n' % SUPABASE_JS
 sw = ("<script>if('serviceWorker' in navigator&&location.protocol==='https:'){"
-      "window.addEventListener('load',function(){navigator.serviceWorker.register('sw.js').catch(function(){});});}</script>\n")
+      "var hadCtl=!!navigator.serviceWorker.controller,reloaded=false;"
+      "navigator.serviceWorker.addEventListener('controllerchange',function(){if(hadCtl&&!reloaded){reloaded=true;location.reload();}});"
+      "window.addEventListener('load',function(){navigator.serviceWorker.register('sw.js',{updateViaCache:'none'}).then(function(r){r.update();}).catch(function(){});});}</script>\n")
 head = '''<!doctype html>
 <html lang="fr">
 <head>
