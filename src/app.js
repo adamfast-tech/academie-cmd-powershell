@@ -269,7 +269,7 @@ const CFG=window.ACADEMIE_SUPABASE||null;
 const AUTH={mode:'login',msg:'',err:'',busy:false,confirmDel:false,pwd:false};
 function authErr(e){
   const m=String((e&&(e.message||e.error_description||e.msg))||e||'');const c=e&&e.code||'';
-  if(/invalid login credentials/i.test(m)||c==='invalid_credentials')return 'E-mail ou mot de passe incorrect.';
+  if(/invalid login credentials/i.test(m)||c==='invalid_credentials')return 'Identifiant ou mot de passe incorrect.';
   if(/email not confirmed/i.test(m)||c==='email_not_confirmed')return 'Adresse pas encore confirmée : clique sur le lien reçu par e-mail, puis reconnecte-toi.';
   if(/already registered|already been registered/i.test(m)||c==='user_already_exists')return 'Un compte existe déjà avec cette adresse e-mail.';
   if(/rate limit|too many/i.test(m)||/rate_limit/.test(c))return 'Trop de tentatives ou d’e-mails envoyés. Réessaie dans quelques minutes.';
@@ -605,7 +605,7 @@ function accountPanel(){
     return `<div class="panel acct">
       <div class="acct-head"><span class="avatar sm" aria-hidden="true">${esc(nm.slice(0,2).toUpperCase())}</span><div class="acct-id"><b>${esc(nm)}</b><span class="small muted">${esc(Cloud.user.email||'')}</span></div><span class="pill ${Cloud.offline?'bad':'ok'}">${Cloud.offline?'Hors ligne':'Synchronisé'+(last?' · '+last:'')}</span></div>
       ${msg}
-      ${AUTH.mode==='newpass'||AUTH.pwd?`<form class="auth-form" data-form="newpass" novalidate><label>Nouveau mot de passe<input type="password" name="password" autocomplete="new-password" minlength="8" required></label><label>Confirmer<input type="password" name="password2" autocomplete="new-password" minlength="8" required></label><div class="chips-row"><button class="btn primary sm" type="submit">Enregistrer</button><button class="btn sm" type="button" data-act="acct-cancel">Annuler</button></div></form>`:''}
+      ${AUTH.mode==='newpass'||AUTH.pwd?`<form class="auth-form" data-form="newpass" novalidate><label>Nouveau mot de passe<span class="pw"><input type="password" name="password" autocomplete="new-password" minlength="8" required><button type="button" class="pw-eye" aria-label="Afficher le mot de passe">Afficher</button></span></label><label>Confirmer<span class="pw"><input type="password" name="password2" autocomplete="new-password" minlength="8" required><button type="button" class="pw-eye" aria-label="Afficher le mot de passe">Afficher</button></span></label><div class="chips-row"><button class="btn primary sm" type="submit">Enregistrer</button><button class="btn sm" type="button" data-act="acct-cancel">Annuler</button></div></form>`:''}
       <div class="chips-row">${AUTH.pwd||AUTH.mode==='newpass'?'':'<button class="btn sm" data-act="acct-pwd">Changer le mot de passe</button>'}<button class="btn sm" data-act="acct-logout">Se déconnecter</button>${AUTH.confirmDel?'':'<button class="btn sm" data-act="acct-del">Supprimer le compte…</button>'}</div>
       ${AUTH.confirmDel?`<div class="confirm"><b>Supprimer définitivement le compte « ${esc(nm)} » ?</b><span class="small">Profil, progression et historique seront effacés du serveur.</span><div class="chips-row"><button class="btn sm bad" data-act="acct-del-yes">Oui, supprimer</button><button class="btn sm" data-act="acct-del-no">Annuler</button></div></div>`:''}
     </div>`;
@@ -614,18 +614,19 @@ function accountPanel(){
   const tabs=`<div class="seg" role="group" aria-label="Compte"><button data-act="acct-mode" data-id="login" aria-pressed="${m==='login'}">Connexion</button><button data-act="acct-mode" data-id="signup" aria-pressed="${m==='signup'}">Créer un compte</button></div>`;
   let form='';
   if(m==='login')form=`<form class="auth-form" data-form="login" novalidate>
-      <label>Adresse e-mail<input type="email" name="email" autocomplete="email" inputmode="email" autocapitalize="off" spellcheck="false" required></label>
-      <label>Mot de passe<input type="password" name="password" autocomplete="current-password" required></label>
+      <label>E-mail ou nom d’utilisateur<input type="text" name="login" autocomplete="username" autocapitalize="off" autocorrect="off" spellcheck="false" required></label>
+      <label>Mot de passe<span class="pw"><input type="password" name="password" autocomplete="current-password" required><button type="button" class="pw-eye" aria-label="Afficher le mot de passe">Afficher</button></span></label>
       <button class="btn primary" type="submit">Se connecter</button>
       <button class="link-btn" type="button" data-act="acct-mode" data-id="forgot">Mot de passe oublié ?</button></form>`;
   else if(m==='signup')form=`<form class="auth-form" data-form="signup" novalidate>
       <label>Nom d’utilisateur<input type="text" name="username" autocomplete="username" autocapitalize="off" spellcheck="false" minlength="3" maxlength="24" pattern="[A-Za-z0-9._\-]{3,24}" required><span class="hint-s">3 à 24 caractères : lettres sans accent, chiffres, . _ -</span></label>
       <label>Adresse e-mail<input type="email" name="email" autocomplete="email" inputmode="email" autocapitalize="off" spellcheck="false" required></label>
-      <label>Mot de passe<input type="password" name="password" autocomplete="new-password" minlength="8" required><span class="hint-s">8 caractères minimum</span></label>
+      <label>Mot de passe<span class="pw"><input type="password" name="password" autocomplete="new-password" minlength="8" required><button type="button" class="pw-eye" aria-label="Afficher le mot de passe">Afficher</button></span><span class="hint-s">8 caractères minimum</span></label>
+      <label>Confirme le mot de passe<span class="pw"><input type="password" name="password2" autocomplete="new-password" minlength="8" required><button type="button" class="pw-eye" aria-label="Afficher le mot de passe">Afficher</button></span></label>
       <button class="btn primary" type="submit">Créer mon compte</button>
       ${S.xp>0||Object.keys(S.done).length?'<span class="small muted">Ta progression actuelle sera ajoutée à ton nouveau compte.</span>':''}</form>`;
   else form=`<form class="auth-form" data-form="forgot" novalidate>
-      <p class="small muted">Saisis l’adresse de ton compte : tu recevras un lien pour choisir un nouveau mot de passe.</p>
+      <p class="small muted">Saisis l’<b>adresse e-mail</b> utilisée à l’inscription (pas le nom d’utilisateur) : tu recevras un lien pour choisir un nouveau mot de passe. L’envoi peut prendre une ou deux minutes.</p>
       <label>Adresse e-mail<input type="email" name="email" autocomplete="email" inputmode="email" autocapitalize="off" spellcheck="false" required></label>
       <button class="btn primary" type="submit">Envoyer le lien</button>
       <button class="link-btn" type="button" data-act="acct-mode" data-id="login">Retour à la connexion</button></form>`;
@@ -654,6 +655,7 @@ async function acctAction(act,id){
     Cloud.on=false;await Cloud.sb.auth.signOut();toast('Compte supprimé.');return;
   }
 }
+main.addEventListener('click',e=>{const b=e.target.closest('.pw-eye');if(!b)return;const i=b.previousElementSibling;if(!i)return;const show=i.type==='password';i.type=show?'text':'password';b.textContent=show?'Masquer':'Afficher';b.setAttribute('aria-label',show?'Masquer le mot de passe':'Afficher le mot de passe');});
 main.addEventListener('submit',async e=>{
   const f=e.target.closest('form[data-form]');if(!f)return;
   e.preventDefault();if(!Cloud.sb||AUTH.busy)return;
@@ -664,8 +666,16 @@ main.addEventListener('submit',async e=>{
   acctSay('','');busy(true);
   try{
     if(kind==='login'){
-      if(!v('email')||!fd.get('password')){acctSay('Renseigne ton e-mail et ton mot de passe.');return;}
-      const r=await Cloud.sb.auth.signInWithPassword({email:v('email'),password:String(fd.get('password'))});
+      const id=v('login'),pwd=String(fd.get('password')||'');
+      if(!id||!pwd){acctSay('Renseigne ton e-mail (ou nom d’utilisateur) et ton mot de passe.');return;}
+      let email=id;
+      if(!id.includes('@')){
+        const q=await Cloud.sb.rpc('resolve_login',{p_login:id,p_password:pwd});
+        if(q.error){acctSay(authErr(q.error));return;}
+        if(!q.data){acctSay('Identifiant ou mot de passe incorrect. Après 10 essais, ce nom d’utilisateur est bloqué 15 minutes.');return;}
+        email=q.data;
+      }
+      const r=await Cloud.sb.auth.signInWithPassword({email,password:pwd});
       if(r.error){acctSay(authErr(r.error));return;}
       AUTH.mode='login';toast('Connecté. Progression synchronisée.');
     }else if(kind==='signup'){
@@ -673,6 +683,7 @@ main.addEventListener('submit',async e=>{
       if(!/^[A-Za-z0-9._-]{3,24}$/.test(u)){acctSay('Nom d’utilisateur : 3 à 24 caractères, lettres sans accent, chiffres, point, tiret ou soulignement.');return;}
       if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em)){acctSay('Adresse e-mail invalide.');return;}
       if(pw.length<8){acctSay('Mot de passe : 8 caractères minimum.');return;}
+      if(pw!==String(fd.get('password2')||'')){acctSay('Les deux mots de passe ne correspondent pas.');return;}
       const a=await Cloud.sb.rpc('username_available',{p_username:u});
       if(a.error){acctSay(authErr(a.error));return;}
       if(a.data===false){acctSay('Ce nom d’utilisateur est déjà pris.');return;}

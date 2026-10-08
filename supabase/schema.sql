@@ -84,3 +84,43 @@ revoke execute on function public.handle_new_user() from public, anon, authentic
 revoke execute on function public.progress_summary() from public, anon, authenticated;
 revoke execute on function public.username_available(text) from public;
 grant execute on function public.username_available(text) to anon, authenticated;
+
+-- Connexion avec le nom d'utilisateur : l'adresse e-mail n'est renvoyée que si le mot de passe est juste,
+-- avec un plafond de 10 essais par nom d'utilisateur et par quart d'heure (contre le forçage).
+create table public.login_attempts (
+  username_key text primary key,
+  window_start timestamptz not null default now(),
+  attempts     int not null default 0
+);
+alter table public.login_attempts enable row level security;
+revoke all on public.login_attempts from anon, authenticated;
+
+create or replace function public.resolve_login(p_login text, p_password text)
+returns text language plpgsql security definer set search_path = '' as $$
+declare
+  k  text := lower(btrim(coalesce(p_login, '')));
+  n  int;
+  em text;
+  h  text;
+begin
+  if k = '' or p_password is null or p_password = '' then return null; end if;
+  if position('@' in k) > 0 then return k; end if;
+  if k !~ '^[a-z0-9._-]{3,24}$' then return null; end if;
+
+  insert into public.login_attempts as a (username_key, window_start, attempts) values (k, now(), 1)
+  on conflict (username_key) do update set
+    attempts     = case when a.window_start < now() - interval '15 minutes' then 1 else a.attempts + 1 end,
+    window_start = case when a.window_start < now() - interval '15 minutes' then now() else a.window_start end
+  returning attempts into n;
+  if n > 10 then return null; end if;
+
+  select u.email, u.encrypted_password into em, h
+  from public.profiles p join auth.users u on u.id = p.id
+  where lower(p.username) = k;
+  if em is null or h is null or h = '' then return null; end if;
+  if h = extensions.crypt(p_password, h) then return em; end if;
+  return null;
+end $$;
+
+revoke execute on function public.resolve_login(text, text) from public;
+grant execute on function public.resolve_login(text, text) to anon, authenticated;
