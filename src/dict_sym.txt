@@ -1,0 +1,280 @@
+@@ sym \ ¦ Chemins ¦ Antislash : sépare les dossiers dans un chemin Windows. ¦ « backslash », barre oblique inversée (AltGr + 8)
+ex: cd C:\Users\it.tech\Documents ¦ Chaque \ descend d’un niveau.
+ex: cd \ ¦ Seul en début de chemin : la racine du lecteur.
+note: Héritage de MS-DOS : `/` servait déjà aux commutateurs, Microsoft a pris `\` pour les dossiers. PowerShell accepte aussi `/` dans les chemins.
+see: `/`, `\\serveur\partage`
+
+@@ sym / ¦ Commutateurs ¦ Barre oblique : introduit un commutateur (option) en CMD. ¦ « slash » (Maj + :)
+ex: dir /s /b ¦ /s et /b sont deux commutateurs.
+ex: ipconfig /all ¦ Une option à un mot.
+note: La lettre qui suit est presque toujours l’initiale d’un mot anglais : /s = Subdirectories, /q = Quiet, /f = Force… L’onglet CMD du mémo les décode toutes.
+note: `/?` derrière n’importe quelle commande CMD affiche son aide.
+see: `-`, `\`
+
+@@ sym - ¦ Paramètres ¦ Tiret : introduit un paramètre en PowerShell (et dans certains outils CMD comme ping). ¦ « dash », trait d’union (touche 6)
+ex: Get-ChildItem -Path C:\Logs -Recurse ¦ -Path prend une valeur, -Recurse est un commutateur.
+ex: cmd> ping -n 2 srv-ad01 ¦ Les outils hérités d’Unix (ping, netstat, tracert) utilisent le tiret.
+note: Le tiret sert aussi entre le verbe et le nom d’une cmdlet (`Get-Service`), et comme signe moins.
+
+@@ sym -- ¦ Paramètres ¦ Double tiret : « fin des paramètres » ; ce qui suit est pris tel quel. ¦ « double dash »
+ex: ps> Remove-Item -- -fichier-bizarre.txt ¦ Supprimer un fichier dont le nom commence par un tiret.
+
+@@ sym . ¦ Chemins ¦ Point : le dossier courant ; en PowerShell, aussi l’accès à une propriété. ¦ « dot »
+ex: ps> .\inventaire.ps1 ¦ Lancer un script du dossier courant (obligatoire en PowerShell).
+ex: (Get-Service Spooler).Status ¦ Le point lit la propriété Status.
+ex: copy C:\Temp\a.txt . ¦ Copier ici.
+
+@@ sym .. ¦ Chemins ¦ Deux points : le dossier parent ; en PowerShell, aussi une plage de nombres. ¦ « dot dot »
+ex: cd .. ¦ Remonter d’un niveau.
+ex: ps> 1..5 ¦ 1, 2, 3, 4, 5.
+ex: ps> 60..65 | ForEach-Object { "192.168.10.$_" } ¦ Générer une plage d’adresses.
+
+@@ sym ~ ¦ Chemins ¦ Tilde : le dossier de profil en PowerShell ; dans les noms courts 8.3 en CMD. ¦ « tilde » (AltGr + 2)
+ex: ps> Set-Location ~ ¦ Aller dans C:\Users\it.tech.
+ex: cmd> echo %~dp0 ¦ En batch, ~ introduit les modificateurs (%~dp0, %~n1…).
+note: `PROGRA~1` est le nom court DOS de « Program Files ».
+
+@@ sym : ¦ Chemins ¦ Deux-points : après une lettre de lecteur ; en PowerShell, après un lecteur virtuel (HKLM:, env:). ¦ « colon »
+ex: D: ¦ Changer de lecteur en CMD.
+ex: ps> Get-ChildItem HKLM:\SOFTWARE ¦ Lecteur Registre.
+ex: ps> $env:COMPUTERNAME ¦ Lecteur des variables d’environnement.
+note: En CMD, `/a:h` ou `/o:-s` : le deux-points sépare un commutateur de sa valeur.
+
+@@ sym * ¦ Jokers ¦ Astérisque : remplace n’importe quelle suite de caractères (même vide). ¦ « star », étoile
+ex: dir *.log ¦ Tous les fichiers .log.
+ex: del C:\Temp\*.* ¦ Tous les fichiers.
+ex: Get-Service *update* ¦ Tous les services dont le nom contient « update ».
+note: En PowerShell, `*` sert aussi à la multiplication et dans `Select-Object *` (toutes les propriétés).
+
+@@ sym ? ¦ Jokers ¦ Point d’interrogation : un seul caractère quelconque ; en PowerShell, aussi alias de Where-Object. ¦ « question mark »
+ex: dir rapport_202?.pdf ¦ rapport_2025.pdf, rapport_2026.pdf…
+ex: ipconfig /? ¦ L’aide de la commande.
+ex: Get-Service | ? Status -eq Running ¦ Raccourci de Where-Object.
+
+@@ sym " ¦ Guillemets ¦ Guillemets doubles : regroupent un texte avec espaces ; en PowerShell, développent les variables. ¦ « double quotes » (touche 3)
+ex: cd "C:\Program Files" ¦ Sans guillemets, CMD couperait au premier espace.
+ex: ps> "Bonjour $env:USERNAME" ¦ La variable est remplacée par sa valeur.
+note: Sur téléphone, attention aux guillemets typographiques « » ou “ ” : les shells ne les comprennent pas (le site les corrige pour toi dans les exercices).
+
+@@ sym ' ¦ Guillemets ¦ Apostrophes : texte littéral en PowerShell (rien n’est remplacé). En CMD, exécute une commande dans for /f. ¦ « single quotes » (touche 4)
+ex: ps> 'Prix : $5' ¦ Affiche exactement Prix : $5.
+ex: cmd> for /f %i in ('hostname') do @echo %i ¦ Exécute hostname et lit sa sortie.
+note: Doubler pour inclure une apostrophe : `'l''accueil'`.
+
+@@ sym ` ¦ Échappement ¦ Accent grave : caractère d’échappement et de continuation de ligne en PowerShell. ¦ « backtick » (AltGr + 7)
+ex: ps> "Prix : `$5" ¦ Le $ n’est plus une variable.
+ex: ps> "Ligne 1`nLigne 2" ¦ `n = saut de ligne, `t = tabulation.
+note: En fin de ligne, il prolonge la commande sur la ligne suivante (aucun espace après !).
+
+@@ sym ^ ¦ Échappement ¦ Accent circonflexe : caractère d’échappement de CMD. ¦ « caret »
+ex: echo 5 ^> 3 ¦ Affiche « 5 > 3 » au lieu de rediriger.
+ex: for /f %i in ('ipconfig ^| findstr IPv4') do @echo %i ¦ Pipe protégé dans for /f.
+note: En fin de ligne, il prolonge une commande CMD sur la ligne suivante.
+
+@@ sym %VAR% ¦ Variables CMD ¦ Lit une variable d’environnement ou de script en CMD. ¦ pourcent … pourcent
+ex: echo %COMPUTERNAME% ¦ Nom du poste.
+ex: cd /d %USERPROFILE% ¦ Dossier du profil.
+ex: echo %DATE:~6,4% ¦ Sous-chaîne : l’année.
+note: Variables utiles : %USERNAME%, %USERDOMAIN%, %LOGONSERVER%, %TEMP%, %SystemRoot%, %ERRORLEVEL%, %DATE%, %TIME%, %CD%.
+see: `$env:`, `!VAR!`
+
+@@ sym %%i ¦ Variables CMD ¦ Variable de boucle for, dans un fichier .bat (dans l’invite : %i). ¦ double pourcent
+ex: for %%f in (*.log) do echo %%f ¦ Dans un script.
+note: Dans un script, CMD consomme un % : on le double pour qu’il en reste un.
+
+@@ sym %1 ¦ Variables CMD ¦ Arguments d’un script batch : %1 à %9, %* pour tous, %0 pour le script lui-même. ¦ pourcent + numéro de position
+ex: ping -n 4 %1 ¦ Premier argument passé au script.
+ex: if "%~1"=="" goto :usage ¦ Argument manquant ?
+
+@@ sym %~dp0 ¦ Variables CMD ¦ Dossier (avec \ final) du script en cours. ¦ modificateurs d (drive) + p (path) appliqués à %0
+ex: cd /d "%~dp0" ¦ Se placer dans le dossier du script.
+note: Autres modificateurs : %~f (chemin complet), %~n (nom), %~x (extension), %~z (taille), %~t (date).
+
+@@ sym !VAR! ¦ Variables CMD ¦ Expansion retardée : la variable est relue à chaque exécution (boucles). ¦ points d’exclamation
+ex: setlocal enabledelayedexpansion ¦ À activer en tête de script.
+ex: set /a N+=1 & echo !N! ¦ Valeur à jour dans un bloc for/if.
+
+@@ sym $ ¦ Variables PS ¦ Dollar : préfixe de toutes les variables PowerShell. ¦ « dollar »
+ex: ps> $serveur = 'SRV-FICHIERS' ¦ Créer une variable.
+ex: ps> $serveur ¦ Lire sa valeur.
+note: Variables automatiques : $true, $false, $null, $_, $PSVersionTable, $Error, $LASTEXITCODE, $PROFILE.
+
+@@ sym $_ ¦ Variables PS ¦ L’objet en cours dans le pipeline (aussi $PSItem). ¦ dollar + soulignement
+ex: Get-Process | Where-Object { $_.CPU -gt 100 } ¦ « le processus en cours ».
+ex: Get-ChildItem | ForEach-Object { $_.Name.ToUpper() } ¦ Chaque fichier.
+note: Dans un catch, $_ est l’erreur attrapée.
+
+@@ sym $env: ¦ Variables PS ¦ Accès aux variables d’environnement en PowerShell. ¦ « environment »
+ex: ps> $env:COMPUTERNAME ¦ = %COMPUTERNAME% en CMD.
+ex: ps> $env:Path -split ';' ¦ Les dossiers du PATH, un par ligne.
+
+@@ sym $null ¦ Variables PS ¦ L’absence de valeur. Sert aussi à jeter une sortie. ¦ « null » : rien
+ex: ps> if ($null -eq $u) { 'Introuvable' } ¦ Toujours $null à gauche.
+ex: ps> $null = New-Item C:\Temp\x -ItemType Directory ¦ Masquer l’affichage.
+
+@@ sym $() ¦ Variables PS ¦ Sous-expression : évalue du code à l’intérieur d’une chaîne entre guillemets doubles. ¦ dollar + parenthèses
+ex: ps> "Service : $((Get-Service Spooler).Status)" ¦ Propriété dans une chaîne.
+ex: ps> "rapport_$(Get-Date -Format yyyy-MM-dd).csv" ¦ Nom de fichier daté.
+
+@@ sym @() ¦ Collections ¦ Crée un tableau (liste ordonnée). ¦ arobase + parenthèses
+ex: ps> $postes = @('PC-COMPTA-01', 'PC-RH-01') ¦ Deux éléments.
+ex: ps> $postes[0] ¦ Premier élément (indice 0).
+note: `@(commande)` garantit un tableau même si la commande renvoie un seul objet (`.Count` fiable).
+
+@@ sym @{} ¦ Collections ¦ Crée une table de hachage (clé = valeur). ¦ arobase + accolades
+ex: ps> @{ LogName='System'; Level=2 } ¦ Filtre pour Get-WinEvent.
+ex: ps> Select-Object Name, @{N='Mo'; E={ $_.WS / 1MB }} ¦ Colonne calculée.
+ex: ps> [PSCustomObject]@{ Poste = 'PC-01'; Etat = 'OK' } ¦ Objet personnalisé.
+
+@@ sym @params ¦ Collections ¦ Splatting : passe une table de hachage comme paramètres nommés. ¦ arobase + nom de variable
+ex: ps> $p = @{ Path = 'C:\Logs'; Recurse = $true }; Get-ChildItem @p ¦ Commande longue lisible.
+
+@@ sym @" "@ ¦ Guillemets ¦ Here-string : texte sur plusieurs lignes en PowerShell. ¦ arobase + guillemets
+note: `@"` termine la première ligne, le texte suit sur autant de lignes que voulu, et `"@` doit être seul en **début** de ligne pour fermer. Les variables y sont développées.
+note: `@' … '@` : version littérale (sans développement des variables). Idéal pour un modèle de mail ou un bloc de configuration.
+
+@@ sym | ¦ Redirection ¦ Pipe : envoie la sortie d’une commande à la suivante (texte en CMD, objets en PowerShell). ¦ « pipe », tuyau (AltGr + 6)
+ex: tasklist | findstr /i outlook ¦ CMD : du texte.
+ex: Get-Process | Sort-Object CPU -Descending ¦ PowerShell : des objets.
+
+@@ sym > ¦ Redirection ¦ Envoie la sortie dans un fichier, en l’écrasant. ¦ « supérieur à » : vers
+ex: ipconfig /all > C:\Temp\diag.txt ¦ Crée ou remplace le fichier.
+note: En PowerShell, `>` équivaut à `| Out-File` ; pour comparer, utiliser -gt.
+
+@@ sym >> ¦ Redirection ¦ Ajoute la sortie à la fin d’un fichier. ¦ double supérieur
+ex: echo %DATE% %TIME% Début >> C:\Logs\journal.txt ¦ Journal qui s’allonge.
+
+@@ sym < ¦ Redirection ¦ Lit l’entrée d’une commande depuis un fichier. ¦ « inférieur à » : depuis
+ex: sort < C:\Temp\liste.txt ¦ Trie le contenu du fichier.
+
+@@ sym 2> ¦ Redirection ¦ Redirige les messages d’erreur (flux n°2). ¦ 2 = flux d’erreur (1 = sortie normale)
+ex: dir C:\absent 2> nul ¦ Masque l’erreur.
+ex: robocopy C:\Data D:\Backup /MIR > C:\Logs\r.log 2>&1 ¦ Sortie ET erreurs dans le même fichier.
+note: `2>&1` : « envoie le flux 2 au même endroit que le flux 1 ».
+
+@@ sym nul ¦ Redirection ¦ Le « trou noir » de CMD : tout ce qui y est envoyé disparaît. ¦ « null device »
+ex: ping -n 1 srv-ad01 > nul ¦ On ne garde que le code de retour.
+note: En PowerShell : `| Out-Null` ou `$null = …`.
+
+@@ sym & ¦ Enchaînement ¦ En CMD : enchaîne deux commandes. En PowerShell : opérateur d’appel. ¦ « ampersand », esperluette
+ex: cmd> ipconfig /flushdns & ipconfig /registerdns ¦ La seconde s’exécute toujours.
+ex: ps> & 'C:\Scripts\Mon script.ps1' ¦ Lancer un chemin entre guillemets.
+
+@@ sym && ¦ Enchaînement ¦ Exécute la seconde commande seulement si la première a réussi (code 0). ¦ double esperluette : « et ensuite »
+ex: net stop spooler && net start spooler ¦ Pas de relance si l’arrêt a échoué.
+note: Disponible en PowerShell 7, pas en 5.1 (utiliser `; if ($?) { … }`).
+
+@@ sym || ¦ Enchaînement ¦ Exécute la seconde commande seulement si la première a échoué. ¦ double pipe : « sinon »
+ex: ping -n 1 SRV-APP01 > nul || echo SRV-APP01 injoignable ¦ Alerte en cas d’échec.
+
+@@ sym ; ¦ Enchaînement ¦ Sépare deux instructions sur une même ligne en PowerShell. ¦ « semicolon », point-virgule
+ex: ps> $a = 1; $b = 2; $a + $b ¦ Trois instructions.
+note: Dans les CSV français, `;` est aussi le séparateur de colonnes (`-Delimiter ';'`).
+
+@@ sym , ¦ Collections ¦ Virgule : sépare les éléments d’une liste ou les valeurs d’un paramètre en PowerShell. ¦ « comma »
+ex: ps> Get-Service Spooler, wuauserv ¦ Deux services.
+ex: ps> Select-Object Name, Status ¦ Deux propriétés.
+
+@@ sym () ¦ Regroupement ¦ Parenthèses : exécutent d’abord ce qu’elles contiennent ; en CMD, regroupent un bloc if/for. ¦ « parentheses »
+ex: ps> (Get-Date).AddDays(-7) ¦ D’abord la date, puis la méthode.
+ex: cmd> if exist D:\ (echo OK) else (echo Absent) ¦ Blocs CMD.
+
+@@ sym {} ¦ Regroupement ¦ Accolades : un bloc de script PowerShell (code exécuté plus tard ou pour chaque objet). ¦ « braces » (AltGr + 4 / AltGr + =)
+ex: Get-Service | Where-Object { $_.Status -eq 'Running' } ¦ Bloc de filtre.
+ex: ps> if ($x -gt 5) { 'grand' } else { 'petit' } ¦ Blocs if/else.
+
+@@ sym [type] ¦ Types ¦ Crochets autour d’un nom de type : force ou précise un type en PowerShell. ¦ « square brackets » (AltGr + 5 / AltGr + °)
+ex: ps> [int]'42' + 1 ¦ Convertit le texte en nombre : 43.
+ex: ps> [PSCustomObject]@{ Nom = 'PC-01' } ¦ Objet personnalisé.
+note: Les crochets servent aussi aux indices : `$postes[0]`.
+
+@@ sym :: ¦ Types ¦ En PowerShell : méthode statique d’une classe .NET. En batch : commentaire officieux. ¦ double deux-points
+ex: ps> [math]::Round(3.14159, 2) ¦ 3,14.
+ex: ps> [Environment]::OSVersion ¦ Version de l’OS.
+ex: cmd> :: Ceci est un commentaire ¦ À éviter dans un bloc ( ).
+
+@@ sym # ¦ Commentaires ¦ Dièse : commentaire jusqu’à la fin de la ligne en PowerShell. ¦ « hash »
+ex: ps> Get-Service # liste les services ¦ Le texte après # est ignoré.
+note: `<# … #>` encadre un commentaire sur plusieurs lignes (et l’aide d’un script).
+
+@@ sym rem ¦ Commentaires ¦ Commentaire dans un script batch. ¦ REMark : remarque
+ex: rem Sauvegarde nocturne - planifiée à 22h ¦ Ignoré à l’exécution.
+
+@@ sym @ ¦ Scripts batch ¦ En CMD : n’affiche pas la commande elle-même (même avec echo on). ¦ « at », arobase
+ex: @echo off ¦ Première ligne de presque tous les scripts.
+ex: for /l %i in (1,1,3) do @echo %i ¦ Masque la répétition de la commande.
+
+@@ sym = ¦ Opérateurs ¦ Affectation : donne une valeur à une variable (pas une comparaison !). ¦ « equals »
+ex: ps> $jours = 90 ¦ PowerShell.
+ex: cmd> set JOURS=90 ¦ CMD (pas d’espace autour du =).
+note: Comparer : `-eq` en PowerShell, `==` ou `EQU` dans un if CMD.
+
+@@ sym -eq ¦ Opérateurs ¦ Opérateurs de comparaison PowerShell. ¦ abréviations anglaises
+ex: ps> 5 -eq 5 ¦ equal : égal.
+ex: ps> 5 -ne 3 ¦ not equal : différent.
+ex: ps> 5 -gt 3 ¦ greater than : supérieur (-ge : ou égal).
+ex: ps> 3 -lt 5 ¦ less than : inférieur (-le : ou égal).
+ex: ps> 'PC-RH-01' -like 'PC-*' ¦ joker.
+ex: ps> 'PC-RH-01' -match '^PC-\w+-\d+$' ¦ expression régulière.
+ex: ps> 'a','b' -contains 'a' ¦ la liste contient.
+note: Préfixe `c` pour respecter la casse : -ceq, -clike, -cmatch.
+
+@@ sym -and ¦ Opérateurs ¦ Opérateurs logiques PowerShell : -and, -or, -not (ou !). ¦ et, ou, non
+ex: ps> Get-Service | Where-Object { $_.StartType -eq 'Automatic' -and $_.Status -ne 'Running' } ¦ Les deux conditions.
+ex: ps> if (-not (Test-Path D:\Backup)) { 'Absent' } ¦ Négation.
+
+@@ sym % ¦ Opérateurs ¦ En PowerShell : alias de ForEach-Object, et modulo (reste). En CMD : délimite les variables. ¦ « percent »
+ex: ps> 1..3 | % { $_ * 10 } ¦ 10, 20, 30.
+ex: ps> 17 % 5 ¦ 2.
+
+@@ sym \\serveur\partage ¦ Réseau ¦ Chemin UNC : accès direct à un partage réseau, sans lettre de lecteur. ¦ Universal Naming Convention
+ex: dir \\SRV-FICHIERS\Compta ¦ Lister un partage.
+ex: ps> Get-ChildItem \\PC-COMPTA-02\C$\Users ¦ Partage d’administration.
+note: `cd` refuse les chemins UNC en CMD : utiliser `pushd`.
+
+@@ sym C$ ¦ Réseau ¦ Partages d’administration cachés : C$, D$ (disques), ADMIN$ (C:\Windows), IPC$. ¦ le $ final rend le partage caché
+ex: copy C:\Tools\outil.msi \\PC-COMPTA-02\C$\Temp\ ¦ Déposer un fichier sur un poste.
+ex: dir \\PC-COMPTA-02\ADMIN$\Logs ¦ Journaux Windows d’un poste.
+note: Réservés aux administrateurs du poste. Base de PsExec et de l’administration sans WinRM.
+
+@@ sym .\ ¦ Chemins ¦ Point + antislash : « dans le dossier courant ». Obligatoire en PowerShell pour lancer un script local. ¦ dot + backslash
+ex: ps> .\nettoyage_temp.ps1 -WhatIf ¦ Exécuter un script du dossier courant.
+
+@@ eq dir ¦ Get-ChildItem ¦ Lister un dossier.
+@@ eq dir /s /b *.pst ¦ Get-ChildItem -Recurse -Filter *.pst ¦ Chercher des fichiers dans les sous-dossiers.
+@@ eq dir /a ¦ Get-ChildItem -Force ¦ Inclure les fichiers cachés.
+@@ eq cd /d D:\Backup ¦ Set-Location D:\Backup ¦ Changer de dossier (et de lecteur).
+@@ eq md C:\Temp\Audit ¦ New-Item C:\Temp\Audit -ItemType Directory ¦ Créer un dossier.
+@@ eq copy a.txt D:\ ¦ Copy-Item a.txt D:\ ¦ Copier un fichier.
+@@ eq xcopy C:\Data D:\Data /e /i ¦ Copy-Item C:\Data D:\Data -Recurse ¦ Copier un dossier complet.
+@@ eq del /q C:\Temp\*.tmp ¦ Remove-Item C:\Temp\*.tmp ¦ Supprimer des fichiers.
+@@ eq rd /s /q C:\Temp\Audit ¦ Remove-Item C:\Temp\Audit -Recurse -Force ¦ Supprimer un dossier et son contenu.
+@@ eq ren a.txt b.txt ¦ Rename-Item a.txt b.txt ¦ Renommer.
+@@ eq type C:\Logs\app.log ¦ Get-Content C:\Logs\app.log ¦ Afficher un fichier texte.
+@@ eq findstr /i erreur C:\Logs\*.log ¦ Select-String -Path C:\Logs\*.log -Pattern erreur ¦ Chercher du texte.
+@@ eq if exist D:\Backup echo OK ¦ if (Test-Path D:\Backup) { 'OK' } ¦ Tester l’existence d’un chemin.
+@@ eq echo %COMPUTERNAME% ¦ $env:COMPUTERNAME ¦ Lire une variable d’environnement.
+@@ eq set SITE=Nice ¦ $site = 'Nice' ¦ Créer une variable.
+@@ eq ipconfig /all ¦ Get-NetIPConfiguration -Detailed ¦ Configuration IP.
+@@ eq ipconfig /flushdns ¦ Clear-DnsClientCache ¦ Vider le cache DNS.
+@@ eq ping -n 1 srv-ad01 ¦ Test-Connection srv-ad01 -Count 1 ¦ Tester la joignabilité.
+@@ eq nslookup srv-fichiers ¦ Resolve-DnsName srv-fichiers ¦ Résolution DNS.
+@@ eq netstat -ano ¦ Get-NetTCPConnection ¦ Connexions réseau.
+@@ eq tasklist ¦ Get-Process ¦ Lister les processus.
+@@ eq taskkill /im outlook.exe /f ¦ Stop-Process -Name outlook -Force ¦ Forcer la fermeture d’un programme.
+@@ eq sc query spooler ¦ Get-Service Spooler ¦ État d’un service.
+@@ eq net stop spooler && net start spooler ¦ Restart-Service Spooler ¦ Redémarrer un service.
+@@ eq sc config wuauserv start= demand ¦ Set-Service wuauserv -StartupType Manual ¦ Type de démarrage d’un service.
+@@ eq sc \\PC-COMPTA-02 query spooler ¦ Get-Service Spooler -ComputerName PC-COMPTA-02 ¦ Service d’un poste distant, sans WinRM.
+@@ eq systeminfo ¦ Get-ComputerInfo ¦ Fiche du poste.
+@@ eq hostname ¦ $env:COMPUTERNAME ¦ Nom du poste.
+@@ eq whoami ¦ "$env:USERDOMAIN\$env:USERNAME" ¦ Compte connecté (whoami.exe fonctionne aussi dans PowerShell).
+@@ eq reg query HKCU\Software\Microsoft\Windows\CurrentVersion\Run ¦ Get-ItemProperty HKCU:\Software\Microsoft\Windows\CurrentVersion\Run ¦ Lire une clé de registre.
+@@ eq shutdown /r /t 0 ¦ Restart-Computer ¦ Redémarrer le poste.
+@@ eq net user mlefevre /domain ¦ Get-ADUser mlefevre -Properties * ¦ Fiche d’un compte du domaine.
+@@ eq net group GG_Compta /domain ¦ Get-ADGroupMember GG_Compta ¦ Membres d’un groupe du domaine.
+@@ eq net localgroup administrateurs ¦ Get-LocalGroupMember Administrateurs ¦ Administrateurs du poste.
+@@ eq schtasks /query ¦ Get-ScheduledTask ¦ Tâches planifiées.
+@@ eq certutil -hashfile a.msi SHA256 ¦ Get-FileHash a.msi ¦ Empreinte d’un fichier.
+@@ eq nltest /sc_verify:contoso.local ¦ Test-ComputerSecureChannel ¦ Relation poste ↔ domaine.
+@@ eq gpupdate /force ¦ Invoke-GPUpdate -Force ¦ Réappliquer les stratégies.

@@ -1,0 +1,885 @@
+### LESSON p13 ¦ Journaux d’événements : Get-WinEvent ¦ 3 ¦ Trouver la cause d’un plantage, d’un redémarrage ou d’un verrouillage dans l’Observateur, en une ligne.
+>>> info ¦ Les journaux de Windows
+Windows consigne tout dans des **journaux** (logs), que l’on consulte d’habitude avec l’Observateur d’événements (`eventvwr.msc`) :
+```table
+Journal ¦ Contenu
+`System` ¦ pilotes, services, démarrages et arrêts
+`Application` ¦ plantages de logiciels, Office, antivirus…
+`Security` ¦ connexions, verrouillages, changements de comptes (administrateur requis)
+`Setup` ¦ installation de mises à jour
+`Microsoft-Windows-…/Operational` ¦ journaux détaillés par composant (GroupPolicy, PrintService, TerminalServices…)
+```
+Chaque événement a un **Id**, un **niveau** (1 Critique, 2 Erreur, 3 Avertissement, 4 Information), une **source** (ProviderName) et un **message**.
+>>> info ¦ Get-WinEvent et -FilterHashtable
+```code ps
+Get-WinEvent -FilterHashtable @{ LogName='System'; Level=2 } -MaxEvents 10
+```
+```anatomy ps
+Get-WinEvent ¦ cmd ¦ Lit les journaux (remplace l’ancien `Get-EventLog`).
+-FilterHashtable ¦ param ¦ Un filtre appliqué **par le service de journalisation** : rapide même sur des millions d’événements.
+@{ … } ¦ sb ¦ La table de critères : clé = valeur, séparés par `;`.
+LogName='System' ¦ val ¦ Le journal à lire.
+Level=2 ¦ val ¦ Uniquement les **erreurs**.
+-MaxEvents 10 ¦ param ¦ Les 10 plus récents.
+```
+Autres clés : `Id=4740` (ou plusieurs : `Id=41,6008`), `ProviderName='…'`, `StartTime=(Get-Date).AddDays(-1)`, `EndTime`.
+!warn `Get-WinEvent -LogName System | Where-Object Id -eq 41` fonctionne mais lit **tout** le journal avant de filtrer. Filtre à gauche avec `-FilterHashtable`.
+>>> info ¦ Les identifiants à connaître par cœur
+```table
+Id ¦ Journal ¦ Signification
+`6005` / `6006` ¦ System ¦ démarrage / arrêt **propre** du service de journalisation (donc du PC)
+`6008` ¦ System ¦ l’arrêt précédent **n’était pas prévu**
+`41` ¦ System ¦ Kernel-Power : redémarrage sans arrêt correct (coupure, plantage, bouton maintenu)
+`1074` ¦ System ¦ arrêt/redémarrage **demandé** par un programme ou un utilisateur (qui, pourquoi)
+`7036` ¦ System ¦ un service a changé d’état ; `7031` : il s’est arrêté de façon inattendue
+`4624` / `4625` ¦ Security ¦ ouverture de session réussie / **échouée**
+`4740` ¦ Security (DC) ¦ compte **verrouillé**, avec le poste d’origine
+`4767` ¦ Security (DC) ¦ compte déverrouillé
+`1000` ¦ Application ¦ une application a planté (nom, module fautif)
+```
+>>> type ps ¦ Affiche les 5 dernières erreurs du journal Système.
+= Get-WinEvent -FilterHashtable @{LogName='System'; Level=2} -MaxEvents 5 ;; Get-WinEvent -FilterHashtable @{LogName="System"; Level=2} -MaxEvents 5 ;; Get-WinEvent -FilterHashtable @{Level=2; LogName='System'} -MaxEvents 5 ;; Get-WinEvent -FilterHashtable @{LogName='System';Level=2} -MaxEvents 5 ;; Get-WinEvent -MaxEvents 5 -FilterHashtable @{LogName='System'; Level=2}
+hint: Une table `@{ }` avec deux clés : `LogName` et `Level` (2 = erreur).
+```out
+
+   ProviderName : Service Control Manager
+
+TimeCreated            Id LevelDisplayName Message
+-----------            -- ---------------- -------
+08/10/2026 08:31:02  7031 Erreur           Le service Spouleur d’impression s’est arrêté de façon…
+06/10/2026 07:58:30  6008 Erreur           L’arrêt système précédent à 07:41:12 le 06/10/2026 n’était pas prévu.
+```
+>>> qcm ¦ « Mon PC s’est éteint tout seul cette nuit. » Quels Id cherches-tu en priorité dans le journal System ?
++ 41, 6008 et 1074
+* 4624 et 4625
+* 1000 et 1001
+* 4740 et 4767
+? 41 et 6008 signalent un arrêt brutal (courant, surchauffe, écran bleu) ; 1074 un arrêt **demandé** (mise à jour, utilisateur, script) avec son auteur.
+>>> fill ps ¦ Cherche les arrêts imprévus des 7 derniers jours.
+```code ps
+Get-WinEvent -FilterHashtable @{ LogName='System'; Id=___; StartTime=(Get-Date).___(-7) }
+```
+= 41,6008 ;; AddDays
+~ 4740 ;; AddHours ;; Days ;; 1000
+? `(Get-Date).AddDays(-7)` = il y a 7 jours. Plusieurs Id se séparent par une virgule.
+>>> info ¦ Compte verrouillé : trouver le coupable
+Quand un compte se verrouille, l’événement **4740** est écrit sur le contrôleur de domaine qui détient le rôle **PDC** (émulateur). Il contient le poste d’où viennent les mauvais mots de passe (`Caller Computer Name`).
+```code ps
+Get-WinEvent -ComputerName SRV-AD01 -FilterHashtable @{ LogName='Security'; Id=4740 } -MaxEvents 5 |
+    Select-Object TimeCreated, @{N='Compte';E={$_.Properties[0].Value}}, @{N='Poste';E={$_.Properties[1].Value}}
+```
+!tip `Get-WinEvent -ComputerName` utilise le service distant du journal des événements (RPC), pas WinRM. Il faut être administrateur du DC (ou membre de « Lecteurs des journaux d’événements »).
+!it Un compte qui se reverrouille sans cesse : souvent un vieux mot de passe enregistré sur un autre poste, un téléphone (messagerie) ou un lecteur réseau mappé avec des identifiants. Le 4740 te dit **où** chercher.
+>>> type ps ¦ Cherche les 5 derniers verrouillages de compte sur le contrôleur SRV-AD01.
+= Get-WinEvent -ComputerName SRV-AD01 -FilterHashtable @{LogName='Security'; Id=4740} -MaxEvents 5 ;; Get-WinEvent -ComputerName SRV-AD01 -FilterHashtable @{LogName="Security"; Id=4740} -MaxEvents 5 ;; Get-WinEvent -FilterHashtable @{LogName='Security'; Id=4740} -ComputerName SRV-AD01 -MaxEvents 5 ;; Get-WinEvent -ComputerName SRV-AD01 -FilterHashtable @{Id=4740; LogName='Security'} -MaxEvents 5 ;; Get-WinEvent -FilterHashtable @{LogName='Security'; Id=4740} -MaxEvents 5 -ComputerName SRV-AD01
+hint: Ajoute `-ComputerName SRV-AD01` : le 4740 n’existe que sur les contrôleurs de domaine.
+>>> qcm ¦ Sur quel ordinateur l’événement 4740 est-il enregistré ?
++ Sur les contrôleurs de domaine (en particulier l’émulateur PDC)
+* Sur le poste de l’utilisateur
+* Sur le serveur de fichiers
+* Sur tous les PC du domaine
+? Le verrouillage est décidé par le DC. Le poste de l’utilisateur ne voit que des 4625 (échecs) locaux.
+
+### LESSON p14 ¦ Réseau en PowerShell ¦ 2 ¦ Test-NetConnection, Resolve-DnsName, Get-NetIPConfiguration : le diagnostic réseau en objets.
+>>> info ¦ L’équivalence avec CMD
+```table
+CMD ¦ PowerShell ¦ Plus apporté par PowerShell
+`ipconfig` ¦ `Get-NetIPConfiguration` (alias `gip`) ¦ objets, filtrables
+`ipconfig /flushdns` ¦ `Clear-DnsClientCache` ¦ —
+`ping` ¦ `Test-Connection` ¦ renvoie des objets ; `-Quiet` → Vrai/Faux
+`ping` + telnet ¦ `Test-NetConnection` (alias `tnc`) ¦ teste un **port TCP**
+`nslookup` ¦ `Resolve-DnsName` ¦ types d’enregistrement, cache, serveur au choix
+`netstat -ano` ¦ `Get-NetTCPConnection` ¦ filtre par port, état, processus
+`route print` ¦ `Get-NetRoute` ¦ —
+```
+>>> info ¦ Test-NetConnection : le port, pas seulement le ping
+Un **ping** dit si la machine répond ; il ne dit pas si le **service** répond. Le partage de fichiers (SMB) écoute sur le port 445, le bureau à distance sur 3389, le web sur 443.
+```code ps
+Test-NetConnection SRV-FICHIERS -Port 445
+```
+```out
+
+ComputerName     : SRV-FICHIERS
+RemoteAddress    : 192.168.10.10
+RemotePort       : 445
+InterfaceAlias   : Ethernet
+SourceAddress    : 192.168.10.42
+TcpTestSucceeded : True
+```
+- `-CommonTCPPort RDP|SMB|HTTP|WINRM` : raccourcis pour les ports courants.
+- `-TraceRoute` : équivalent de tracert.
+- `-InformationLevel Quiet` : renvoie seulement True/False.
+>>> type ps ¦ Vérifie que le bureau à distance (port 3389) répond sur PC-COMPTA-02.
+= Test-NetConnection PC-COMPTA-02 -Port 3389 ;; tnc PC-COMPTA-02 -Port 3389 ;; Test-NetConnection -ComputerName PC-COMPTA-02 -Port 3389 ;; Test-NetConnection PC-COMPTA-02 -CommonTCPPort RDP ;; tnc PC-COMPTA-02 -CommonTCPPort RDP ;; Test-NetConnection -ComputerName PC-COMPTA-02 -CommonTCPPort RDP
+>>> qcm ¦ `ping microsoft.com` échoue, mais `Test-NetConnection microsoft.com -Port 443` renvoie `TcpTestSucceeded : True`. Conclusion ?
++ Le site fonctionne : il bloque simplement le ping (ICMP)
+* Le site est en panne
+* Le DNS est en panne
+* Le port 443 est fermé
+? Beaucoup de serveurs et pare-feu ignorent le ping. Le test de port est le vrai test de service.
+>>> info ¦ Test-Connection pour les scripts
+```code ps
+if (Test-Connection SRV-APP01 -Count 1 -Quiet) { 'En ligne' } else { 'Injoignable' }
+```
+`-Quiet` transforme le résultat en un simple **booléen** (`True`/`False`), idéal dans un `if`.
+>>> fill ps ¦ Liste, parmi trois postes, ceux qui répondent.
+```code ps
+'PC-COMPTA-01','PC-RECEP-02','PC-RH-01' | Where-Object { Test-Connection $_ -Count 1 ___ }
+```
+= -Quiet
+~ -Silent ;; -Count ;; -Ping ;; -Bool
+? Where-Object garde les noms pour lesquels le bloc renvoie Vrai.
+>>> type ps ¦ Résous le nom srv-fichiers en interrogeant le DNS.
+= Resolve-DnsName srv-fichiers ;; Resolve-DnsName -Name srv-fichiers ;; Resolve-DnsName SRV-FICHIERS ;; Resolve-DnsName srv-fichiers.contoso.local ;; Resolve-DnsName -Name srv-fichiers.contoso.local
+```out
+
+Name                           Type   TTL   Section    IPAddress
+----                           ----   ---   -------    ---------
+SRV-FICHIERS.contoso.local     A      1200  Answer     192.168.10.10
+```
+? `-Type MX` pour les serveurs de messagerie, `-Type SRV` pour les services (ex. `_ldap._tcp.dc._msdcs.contoso.local` = la liste des contrôleurs de domaine), `-Server 8.8.8.8` pour interroger un autre DNS.
+>>> info ¦ Qui écoute sur ce port ?
+```code ps
+Get-NetTCPConnection -LocalPort 3389 -State Listen |
+    Select-Object LocalPort, OwningProcess, @{N='Processus';E={ (Get-Process -Id $_.OwningProcess).Name }}
+```
+Le lien entre connexion et processus, que `netstat -ano` + `tasklist` faisaient en deux temps, tient dans une propriété calculée.
+>>> qcm ¦ Quelle commande vide le cache DNS du poste en PowerShell ?
++ `Clear-DnsClientCache`
+* `Remove-DnsCache`
+* `Reset-Dns`
+* `ipconfig -flushdns`
+? Verbe `Clear`, nom `DnsClientCache`. (`ipconfig /flushdns` fonctionne aussi depuis PowerShell : c’est un exécutable.)
+
+### LESSON p15 ¦ Le Registre comme un disque ¦ 3 ¦ HKLM:, HKCU:, Get-ItemProperty, et l’inventaire des logiciels installés.
+>>> info ¦ Le registre est un « lecteur »
+PowerShell expose le Registre comme un **lecteur**, avec les mêmes commandes que les fichiers :
+```table
+Registre ¦ PowerShell
+ruche HKLM ¦ lecteur `HKLM:`
+clé ¦ un **élément** (Item) : `Get-ChildItem`, `New-Item`, `Remove-Item`
+valeur ¦ une **propriété** de la clé : `Get-ItemProperty`, `Set-ItemProperty`, `New-ItemProperty`
+```
+```code ps
+Set-Location HKLM:\SOFTWARE\Microsoft
+Get-ChildItem
+```
+!warn Le `:` après `HKLM` est obligatoire : `HKLM:\SOFTWARE`. Sans lui, PowerShell cherche un dossier « HKLM » sur le disque.
+>>> info ¦ Lire des valeurs
+```code ps
+Get-ItemProperty HKCU:\Software\Microsoft\Windows\CurrentVersion\Run
+Get-ItemPropertyValue 'HKLM:\SYSTEM\CurrentControlSet\Control\Terminal Server' -Name fDenyTSConnections
+```
+```out
+
+OneDrive                 : "C:\Program Files\Microsoft OneDrive\OneDrive.exe" /background
+com.squirrel.Teams.Teams : ms-teams.exe
+ScanAssist               : "C:\Program Files (x86)\ScanAssist\ScanAssist.exe" /tray
+PSPath                   : Microsoft.PowerShell.Core\Registry::HKEY_CURRENT_USER\Software\…
+```
+- `Get-ItemProperty` renvoie toutes les valeurs, plus des propriétés `PS*` ajoutées par PowerShell.
+- `Get-ItemPropertyValue` renvoie directement la donnée (PowerShell 5.0 et +).
+>>> type ps ¦ Lis la valeur fDenyTSConnections (bureau à distance) de la clé Terminal Server.
+= Get-ItemPropertyValue 'HKLM:\SYSTEM\CurrentControlSet\Control\Terminal Server' -Name fDenyTSConnections ;; Get-ItemPropertyValue "HKLM:\SYSTEM\CurrentControlSet\Control\Terminal Server" -Name fDenyTSConnections ;; Get-ItemProperty 'HKLM:\SYSTEM\CurrentControlSet\Control\Terminal Server' -Name fDenyTSConnections ;; Get-ItemProperty "HKLM:\SYSTEM\CurrentControlSet\Control\Terminal Server" -Name fDenyTSConnections ;; (Get-ItemProperty 'HKLM:\SYSTEM\CurrentControlSet\Control\Terminal Server').fDenyTSConnections ;; (Get-ItemProperty "HKLM:\SYSTEM\CurrentControlSet\Control\Terminal Server").fDenyTSConnections
+hint: Chemin entre guillemets (il contient un espace) et `-Name` pour la valeur.
+```out
+0
+```
+>>> info ¦ Écrire des valeurs
+```code ps
+Set-ItemProperty 'HKLM:\SYSTEM\CurrentControlSet\Control\Terminal Server' -Name fDenyTSConnections -Value 0
+New-ItemProperty HKCU:\Software\Contoso -Name Site -Value 'Nice' -PropertyType String
+Remove-ItemProperty HKCU:\Software\Microsoft\Windows\CurrentVersion\Run -Name ScanAssist -WhatIf
+```
+```table
+-PropertyType ¦ Type du Registre
+`String` ¦ REG_SZ
+`ExpandString` ¦ REG_EXPAND_SZ
+`MultiString` ¦ REG_MULTI_SZ
+`DWord` ¦ REG_DWORD
+`QWord` ¦ REG_QWORD
+`Binary` ¦ REG_BINARY
+```
+!tip `Set-ItemProperty` modifie une valeur existante en gardant son type ; `New-ItemProperty` la crée (et échoue si elle existe, sauf `-Force`).
+>>> fill ps ¦ Retire l’utilitaire ScanAssist du démarrage automatique de la session (en simulant d’abord).
+```code ps
+___ HKCU:\Software\Microsoft\Windows\CurrentVersion\Run -Name ScanAssist ___
+```
+= Remove-ItemProperty ;; -WhatIf
+~ Remove-Item ;; Clear-Item ;; -Force ;; -Recurse
+? `Remove-Item` supprimerait **toute la clé Run**, avec OneDrive et Teams ! Une valeur = une propriété : `Remove-ItemProperty`.
+>>> qcm ¦ Quelle commande supprimerait par erreur tous les programmes de démarrage de l’utilisateur ?
++ `Remove-Item HKCU:\Software\Microsoft\Windows\CurrentVersion\Run`
+* `Remove-ItemProperty HKCU:\Software\Microsoft\Windows\CurrentVersion\Run -Name ScanAssist`
+* `Get-ItemProperty HKCU:\Software\Microsoft\Windows\CurrentVersion\Run`
+* `Get-ChildItem HKCU:\Software\Microsoft\Windows\CurrentVersion`
+? Remove-Item agit sur la **clé** entière. D’où le réflexe `-WhatIf`.
+>>> info ¦ Inventaire logiciel par le Registre
+Chaque logiciel installé possède une sous-clé sous `…\Uninstall`, avec `DisplayName`, `DisplayVersion`, `Publisher`, `InstallDate`, `UninstallString`.
+```code ps
+$cles = 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\*',
+        'HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\*'
+Get-ItemProperty $cles |
+    Where-Object DisplayName |
+    Select-Object DisplayName, DisplayVersion, Publisher |
+    Sort-Object DisplayName
+```
+```out
+
+DisplayName                               DisplayVersion
+-----------                               --------------
+7-Zip 24.08 (x64)                         24.08
+Adobe Acrobat (64-bit)                    24.003.20180
+Google Chrome                             129.0.6668.90
+Microsoft 365 Apps for enterprise - fr-fr 16.0.18025.20140
+Veeam Agent for Microsoft Windows         6.2.0.121
+```
+- `WOW6432Node` contient les logiciels **32 bits** installés sur un Windows 64 bits.
+- `Where-Object DisplayName` écarte les entrées sans nom (composants techniques).
+- Le `*` à la fin du chemin lit **toutes** les sous-clés d’un coup.
+>>> type ps ¦ Vérifie quelle version d’Acrobat est installée sur le poste (clé Uninstall 64 bits).
+= Get-ItemProperty HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\* | Where-Object DisplayName -like '*Acrobat*' ;; Get-ItemProperty HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\* | Where-Object DisplayName -like "*Acrobat*" ;; Get-ItemProperty HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\* | Where-Object { $_.DisplayName -like '*Acrobat*' } ;; Get-ItemProperty HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\* | Where-Object DisplayName -like '*Acrobat*' | Select-Object DisplayName, DisplayVersion ;; Get-ItemProperty 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\*' | Where-Object DisplayName -like '*Acrobat*'
+hint: `Get-ItemProperty` sur `…\Uninstall\*`, puis `Where-Object DisplayName -like '*Acrobat*'`.
+
+--- Scripter
+### LESSON p16 ¦ Variables, types et chaînes ¦ 2 ¦ $variables, guillemets simples ou doubles, -f, et les méthodes de texte utiles.
+>>> info ¦ Les variables
+Une variable commence par **`$`** et se crée en lui affectant une valeur avec `=` :
+```code ps
+$serveur = 'SRV-FICHIERS'
+$jours = 90
+$services = Get-Service
+$services.Count
+```
+- Pas de déclaration préalable, pas de `set` : `$nom = valeur`.
+- Une variable peut contenir **n’importe quoi** : texte, nombre, liste d’objets…
+- Elle vit pendant la session (ou le script).
+>>> info ¦ Les types
+```table
+Type ¦ Exemple ¦ Écriture du type
+texte ¦ `'Nice'` ¦ `[string]`
+entier ¦ `42` ¦ `[int]`
+décimal ¦ `3.5` ¦ `[double]`
+booléen ¦ `$true`, `$false` ¦ `[bool]`
+date ¦ `Get-Date` ¦ `[datetime]`
+tableau ¦ `@(1,2,3)` ¦ `[array]`
+rien ¦ `$null` ¦ —
+```
+On peut **forcer** un type : `[int]$age = '42'` convertit le texte en nombre. `$x.GetType().Name` révèle le type d’une variable.
+!warn `'10' + 5` donne `105` (texte, car l’élément de gauche est un texte) ; `5 + '10'` donne `15` (nombre). L’opérande de **gauche** décide.
+>>> qcm ¦ Que vaut `'10' + 5` en PowerShell ?
++ `105`
+* `15`
+* Une erreur
+* `'10 5'`
+? À gauche, un texte : PowerShell convertit 5 en texte et concatène. `[int]'10' + 5` donne 15.
+>>> info ¦ Guillemets simples ou doubles
+```code ps
+$nom = 'Dupont'
+'Bonjour $nom'
+"Bonjour $nom"
+"Fichiers : $((Get-ChildItem C:\Logs).Count)"
+```
+```out
+Bonjour $nom
+Bonjour Dupont
+Fichiers : 4
+```
+- `' '` (simples) : texte **littéral**, rien n’est remplacé.
+- `" "` (doubles) : les **variables sont développées**.
+- `$( … )` : sous-expression, pour une propriété ou une commande dans des guillemets doubles. `"$user.Name"` affiche l’objet suivi de « .Name » ; il faut `"$($user.Name)"`.
+- L’accent grave **`** échappe : `` "Prix : `$5" `` ; `` `n `` = saut de ligne, `` `t `` = tabulation.
+>>> fill ps ¦ Affiche « Le service Spooler est Running » en lisant la propriété Status.
+```code ps
+$s = Get-Service Spooler
+"Le service $($s.Name) est ___"
+```
+= $($s.Status)
+~ $s.Status ;; '$s.Status' ;; ($s.Status) ;; %s.Status%
+? Sans `$( )`, `"$s.Status"` développerait `$s` (le nom du type) puis afficherait « .Status ».
+>>> info ¦ L’opérateur de format -f
+```code ps
+'{0} a {1} Go libres sur {2}' -f 'C:', 38.4, 'PC-IT-01'
+'{0:N1} Go' -f 38.4567
+'{0:P0}' -f 0.08
+'{0:yyyy-MM-dd}' -f (Get-Date)
+```
+```out
+C: a 38,4 Go libres sur PC-IT-01
+38,5 Go
+8 %
+2026-10-08
+```
+- `{0}`, `{1}`… : emplacements remplis dans l’ordre par les valeurs à droite de `-f`.
+- `:N1` nombre à 1 décimale, `:P0` pourcentage, `:D3` entier sur 3 chiffres (`007`), `:yyyy-MM-dd` date.
+>>> type ps ¦ Construis le nom de fichier « rapport_2026-10-08.csv » à partir de la date du jour avec -f.
+= 'rapport_{0:yyyy-MM-dd}.csv' -f (Get-Date) ;; "rapport_{0:yyyy-MM-dd}.csv" -f (Get-Date) ;; 'rapport_{0}.csv' -f (Get-Date -Format yyyy-MM-dd) ;; "rapport_$(Get-Date -Format yyyy-MM-dd).csv" ;; 'rapport_{0}.csv' -f (Get-Date -Format 'yyyy-MM-dd') ;; "rapport_$(Get-Date -Format 'yyyy-MM-dd').csv"
+```out
+rapport_2026-10-08.csv
+```
+? `MM` = mois, `mm` = minutes ! Piège classique dans les formats de date.
+>>> info ¦ Méthodes de texte
+```table
+Méthode / opérateur ¦ Exemple ¦ Résultat
+`.ToUpper()` / `.ToLower()` ¦ `'jdupont'.ToUpper()` ¦ `JDUPONT`
+`.Trim()` ¦ `'  PC-01 '.Trim()` ¦ `PC-01`
+`.Replace(a,b)` ¦ `'Léa'.Replace('é','e')` ¦ `Lea`
+`.Substring(début,longueur)` ¦ `'Dupont'.Substring(0,1)` ¦ `D`
+`.Length` ¦ `'Dupont'.Length` ¦ `6`
+`-split` ¦ `'a;b;c' -split ';'` ¦ `a`, `b`, `c`
+`-join` ¦ `'a','b' -join ', '` ¦ `a, b`
+`-replace` ¦ `'PC-RH-01' -replace '^PC-','LAP-'` ¦ `LAP-RH-01` (regex)
+```
+>>> fill ps ¦ Fabrique un identifiant « ldurand » : initiale du prénom + nom, en minuscules.
+```code ps
+$prenom = 'Léa'; $nom = 'Durand'
+$login = ($prenom.___(0,1) + $nom).___()
+```
+= Substring ;; ToLower
+~ Split ;; Trim ;; ToUpper ;; Replace
+? Résultat : `ldurand`. Les accents ? On y revient dans la création en masse d’utilisateurs.
+
+### LESSON p17 ¦ Tableaux, tables de hachage et objets personnalisés ¦ 3 ¦ @(), @{}, [PSCustomObject] : construire tes propres données et rapports.
+>>> info ¦ Les tableaux
+```code ps
+$postes = @('PC-COMPTA-01', 'PC-COMPTA-02', 'PC-RH-01')
+$postes[0]
+$postes[-1]
+$postes.Count
+$postes += 'PC-DIR-01'
+```
+```out
+PC-COMPTA-01
+PC-RH-01
+3
+```
+- `@( )` crée un tableau ; une simple liste avec virgules aussi : `$a = 1, 2, 3`.
+- Indices à partir de **0** ; `-1` = le dernier.
+- `+=` ajoute (en recréant le tableau : lent sur des milliers d’éléments).
+- `1..5` crée la suite 1, 2, 3, 4, 5.
+>>> qcm ¦ Que renvoie `$postes[1]` si `$postes = 'PC-A', 'PC-B', 'PC-C'` ?
++ `PC-B`
+* `PC-A`
+* `PC-C`
+* Une erreur
+? Les indices commencent à 0.
+>>> info ¦ Les tables de hachage
+Une **table de hachage** (hashtable) associe des **clés** à des **valeurs**, comme un dictionnaire :
+```code ps
+$ip = @{ 'SRV-AD01' = '192.168.10.5'; 'SRV-FICHIERS' = '192.168.10.10' }
+$ip['SRV-AD01']
+$ip.'SRV-FICHIERS'
+$ip['SRV-IMPRESSION'] = '192.168.10.12'
+$ip.Keys
+```
+On les a déjà croisées : `@{ LogName='System'; Level=2 }` pour Get-WinEvent, `@{ N='…'; E={…} }` pour les colonnes calculées. Elles servent aussi au **splatting** :
+```code ps
+$params = @{ Path = 'C:\Logs'; Filter = '*.log'; Recurse = $true }
+Get-ChildItem @params
+```
+`@params` (avec `@`) déroule la table en paramètres nommés : pratique pour des commandes longues.
+>>> fill ps ¦ Passe la table de paramètres à Get-ChildItem.
+```code ps
+$p = @{ Path = 'C:\Data'; File = $true; Recurse = $true }
+Get-ChildItem ___
+```
+= @p
+~ $p ;; -p ;; %p ;; @{p}
+? `@p` = **splatting** : chaque clé devient un paramètre. `$p` passerait la table entière comme chemin.
+>>> info ¦ [PSCustomObject] : tes propres objets
+Pour un rapport, on assemble des informations de plusieurs sources en **un objet par ligne** :
+```code ps
+$os   = Get-CimInstance Win32_OperatingSystem
+$bios = Get-CimInstance Win32_BIOS
+[PSCustomObject]@{
+    Poste    = $env:COMPUTERNAME
+    OS       = $os.Caption
+    Serie    = $bios.SerialNumber
+    Demarrage = $os.LastBootUpTime
+}
+```
+```out
+
+Poste     : PC-IT-01
+OS        : Microsoft Windows 11 Professionnel
+Serie     : 8H2KLM3
+Demarrage : 06/10/2026 07:58:10
+```
+!tip Un tableau de `[PSCustomObject]` passe directement à `Export-Csv`, `Sort-Object`, `Format-Table`… C’est **la** façon de produire un rapport propre.
+>>> type ps ¦ Crée un objet avec deux propriétés : Nom = PC-RH-01 et Service = RH.
+= [PSCustomObject]@{ Nom = 'PC-RH-01'; Service = 'RH' } ;; [PSCustomObject]@{Nom='PC-RH-01';Service='RH'} ;; [PSCustomObject]@{ Nom = "PC-RH-01"; Service = "RH" } ;; [pscustomobject]@{ Nom = 'PC-RH-01'; Service = 'RH' } ;; [PSCustomObject]@{Nom="PC-RH-01";Service="RH"}
+>>> qcm ¦ Pourquoi construire des [PSCustomObject] plutôt que des chaînes de texte comme « PC-RH-01 ; RH » ?
++ Les objets se trient, se filtrent et s’exportent en CSV avec des colonnes nommées
+* Le texte est interdit dans les scripts
+* Les objets prennent moins de mémoire
+* Les chaînes ne s’affichent pas
+? Un objet garde la structure. Une chaîne devrait être redécoupée à chaque usage.
+
+### LESSON p18 ¦ Conditions : if, elseif, switch ¦ 2 ¦ Prendre des décisions dans un script.
+>>> info ¦ if / elseif / else
+```code ps
+$libre = (Get-CimInstance Win32_LogicalDisk -Filter "DeviceID='C:'").FreeSpace / 1GB
+if ($libre -lt 10) {
+    Write-Warning "Disque C: presque plein : $([math]::Round($libre,1)) Go"
+} elseif ($libre -lt 50) {
+    Write-Host 'Espace correct'
+} else {
+    Write-Host 'Beaucoup d’espace' -ForegroundColor Green
+}
+```
+- La condition entre **parenthèses**, le code entre **accolades**.
+- `elseif` en un seul mot.
+- Opérateurs : `-eq -ne -gt -ge -lt -le -like -match -contains -in`, combinés avec `-and`, `-or`, `-not` (ou `!`).
+>>> qcm ¦ Lequel est un test valide « si le service est arrêté » ?
++ `if ($s.Status -eq 'Stopped') { … }`
+* `if $s.Status == 'Stopped' { … }`
+* `if ($s.Status = 'Stopped') { … }`
+* `if [$s.Status -eq 'Stopped'] { … }`
+? Parenthèses + `-eq`. `==` n’existe pas, `=` affecte.
+>>> info ¦ Les valeurs « vraies » et « fausses »
+Dans un `if`, PowerShell convertit tout en booléen :
+```table
+Faux ¦ Vrai
+`$false`, `0`, `''` (texte vide), `$null`, tableau vide ¦ tout le reste
+```
+D’où les tests courts : `if (Get-Process outlook -ErrorAction SilentlyContinue) { 'Outlook est ouvert' }`.
+!warn Comparer à `$null` : écris `$null -eq $x` (null **à gauche**). Si `$x` est un tableau, `$x -eq $null` filtre le tableau au lieu de répondre Vrai/Faux.
+>>> info ¦ switch
+```code ps
+switch ($env:COMPUTERNAME) {
+    { $_ -like 'PC-COMPTA*' } { $imprimante = '\\SRV-IMPRESSION\IMP-COMPTA' }
+    { $_ -like 'PC-RECEP*' }  { $imprimante = '\\SRV-IMPRESSION\IMP-RECEP' }
+    'PC-DIR-01'               { $imprimante = '\\SRV-IMPRESSION\IMP-DIRECTION' }
+    default                   { $imprimante = $null }
+}
+```
+- Chaque ligne : une **valeur** (ou un bloc de test avec `$_`) puis le code à exécuter.
+- `default` : si rien ne correspond.
+- Options : `switch -Wildcard` (jokers sans bloc), `switch -Regex`.
+>>> fill ps ¦ Complète : message selon le code de retour de robocopy.
+```code ps
+switch ($LASTEXITCODE) {
+    0       { 'Rien à copier' }
+    1       { 'Copie réussie' }
+    ___     { 'Échec ou situation inattendue' }
+}
+```
+= default
+~ else ;; * ;; other ;; $null
+? `$LASTEXITCODE` contient le code de sortie du dernier **exécutable** (robocopy, ping…), l’équivalent du `%ERRORLEVEL%` de CMD.
+>>> type ps ¦ Affiche « En ligne » si SRV-AD01 répond à un ping, sinon « Hors ligne ».
+= if (Test-Connection SRV-AD01 -Count 1 -Quiet) { 'En ligne' } else { 'Hors ligne' } ;; if (Test-Connection SRV-AD01 -Count 1 -Quiet) { "En ligne" } else { "Hors ligne" } ;; if (Test-Connection -ComputerName SRV-AD01 -Count 1 -Quiet) { 'En ligne' } else { 'Hors ligne' } ;; if(Test-Connection SRV-AD01 -Quiet -Count 1){'En ligne'}else{'Hors ligne'} ;; if (Test-Connection SRV-AD01 -Quiet -Count 1) { 'En ligne' } else { 'Hors ligne' }
+```out
+En ligne
+```
+
+### LESSON p19 ¦ Boucles : foreach, ForEach-Object, for, while ¦ 3 ¦ Répéter une action sur chaque poste, chaque utilisateur, chaque ligne d’un CSV.
+>>> info ¦ L’instruction foreach
+```code ps
+$postes = 'PC-COMPTA-01', 'PC-RECEP-02', 'PC-RH-01'
+foreach ($poste in $postes) {
+    if (Test-Connection $poste -Count 1 -Quiet) {
+        "$poste : en ligne"
+    } else {
+        "$poste : injoignable"
+    }
+}
+```
+```out
+PC-COMPTA-01 : en ligne
+PC-RECEP-02 : injoignable
+PC-RH-01 : en ligne
+```
+```anatomy ps
+foreach ¦ kw ¦ Instruction de boucle.
+$poste ¦ var ¦ Variable qui prend **tour à tour** chaque valeur. Nom libre, souvent le singulier de la liste.
+in ¦ kw ¦ « dans ».
+$postes ¦ var ¦ La collection parcourue.
+{ … } ¦ sb ¦ Le code répété.
+```
+>>> info ¦ ForEach-Object dans le pipeline
+La même chose, mais **dans un pipeline**, avec `$_` :
+```code ps
+Get-Content C:\Temp\postes.txt | ForEach-Object { "$_ : " + (Test-Connection $_ -Count 1 -Quiet) }
+```
+```table
+`foreach ($x in $liste) { }` ¦ `$liste | ForEach-Object { $_ }`
+instruction de langage ¦ cmdlet (alias `%` et `foreach`)
+charge toute la liste en mémoire, puis boucle ¦ traite chaque objet **dès qu’il arrive**
+légèrement plus rapide ¦ s’enchaîne avec d’autres commandes du pipeline
+```
+!warn Le mot `foreach` sert aux deux : en **début** de ligne c’est l’instruction ; **après un `|`** c’est l’alias de ForEach-Object.
+>>> fill ps ¦ Affiche en majuscules chaque ligne du fichier postes.txt.
+```code ps
+Get-Content C:\Temp\postes.txt | ForEach-Object { ___.ToUpper() }
+```
+= $_
+~ $poste ;; $this ;; $line ;; %_
+? Dans ForEach-Object, l’élément en cours s’appelle toujours `$_` (ou `$PSItem`).
+>>> info ¦ for et while
+```code ps
+for ($i = 60; $i -le 65; $i++) {
+    "192.168.10.$i"
+}
+
+$essais = 0
+while (-not (Test-Connection SRV-APP01 -Count 1 -Quiet) -and $essais -lt 10) {
+    $essais++
+    Start-Sleep -Seconds 30
+}
+```
+- `for (départ; condition; incrément)` : un compteur, comme `for /l` en CMD.
+- `while (condition) { }` : tant que c’est vrai ; ici, on attend que le serveur revienne, 10 essais maximum.
+- `do { } until (condition)` : s’exécute au moins une fois.
+- `break` sort de la boucle, `continue` passe au tour suivant.
+>>> qcm ¦ Que fait `continue` dans une boucle foreach ?
++ Passe directement à l’élément suivant
+* Sort de la boucle
+* Recommence la boucle depuis le début
+* Met le script en pause
+? `break` sort complètement ; `continue` saute le reste du tour.
+>>> order ps ¦ Construis la boucle qui affiche le nom de chaque utilisateur du CSV.
+~ foreach ;; ($u in (Import-Csv C:\Data\nouveaux.csv -Delimiter ';')) ;; { $u.Prenom + ' ' + $u.Nom }
+x~ ForEach-Object ;; $_
+? Chaque ligne du CSV devient un objet `$u` avec les propriétés Prenom, Nom, Service…
+>>> type ps ¦ Pour chaque fichier .log de C:\Logs, affiche son nom et sa taille sous la forme « app.log : 412 ».
+= Get-ChildItem C:\Logs\*.log | ForEach-Object { "$($_.Name) : $($_.Length)" } ;; Get-ChildItem C:\Logs -Filter *.log | ForEach-Object { "$($_.Name) : $($_.Length)" } ;; gci C:\Logs\*.log | % { "$($_.Name) : $($_.Length)" } ;; foreach ($f in Get-ChildItem C:\Logs\*.log) { "$($f.Name) : $($f.Length)" } ;; foreach ($f in (Get-ChildItem C:\Logs\*.log)) { "$($f.Name) : $($f.Length)" } ;; Get-ChildItem C:\Logs\*.log | ForEach-Object { $_.Name + ' : ' + $_.Length } ;; Get-ChildItem C:\Logs\*.log | ForEach-Object { '{0} : {1}' -f $_.Name, $_.Length }
+```out
+app.log : 412
+backup_2026-10-06.log : 953
+backup_2026-10-07.log : 1240
+install.log : 122
+```
+
+### LESSON p20 ¦ Fonctions et paramètres ¦ 3 ¦ Écrire tes propres commandes réutilisables, avec param() et des valeurs par défaut.
+>>> info ¦ Une fonction simple
+```code ps
+function Get-EspaceLibre {
+    param(
+        [string]$Lecteur = 'C:'
+    )
+    $d = Get-CimInstance Win32_LogicalDisk -Filter "DeviceID='$Lecteur'"
+    [math]::Round($d.FreeSpace / 1GB, 1)
+}
+
+Get-EspaceLibre
+Get-EspaceLibre -Lecteur D:
+```
+```out
+38,4
+612
+```
+```anatomy ps
+function ¦ kw ¦ Déclare une fonction.
+Get-EspaceLibre ¦ cmd ¦ Son nom : respecte Verbe-Nom avec un verbe approuvé.
+param( … ) ¦ kw ¦ Le bloc des **paramètres**, en tête de fonction.
+[string]$Lecteur = 'C:' ¦ var ¦ Paramètre typé texte, avec valeur **par défaut**.
+```
+Le résultat d’une fonction = tout ce qu’elle **produit** et n’est pas capturé (pas besoin de `return`).
+>>> info ¦ Des paramètres solides
+```code ps
+function Test-Poste {
+    param(
+        [Parameter(Mandatory)]
+        [string[]]$Nom,
+        [int]$Port = 445
+    )
+    foreach ($n in $Nom) {
+        [PSCustomObject]@{
+            Poste  = $n
+            Ping   = Test-Connection $n -Count 1 -Quiet
+            Port   = $Port
+            Ouvert = (Test-NetConnection $n -Port $Port -WarningAction SilentlyContinue).TcpTestSucceeded
+        }
+    }
+}
+Test-Poste -Nom PC-COMPTA-01, PC-RECEP-02
+```
+- `[Parameter(Mandatory)]` : obligatoire ; PowerShell le **demande** s’il manque.
+- `[string[]]` : accepte plusieurs valeurs.
+- `[ValidateSet('C:','D:')]`, `[ValidateRange(1,65535)]` : refusent les valeurs invalides avant même d’exécuter.
+- `[switch]$Force` : un commutateur.
+>>> qcm ¦ Que se passe-t-il si on appelle `Test-Poste` sans -Nom ?
++ PowerShell demande la valeur, car le paramètre est obligatoire
+* La fonction s’exécute avec une liste vide
+* Erreur de syntaxe à la définition
+* Elle teste le poste local
+? `Mandatory` force la saisie. Dans un script non interactif, cela provoque une erreur : à prévoir.
+>>> fill ps ¦ Déclare un paramètre « Jours » entier, valant 90 par défaut.
+```code ps
+function Get-ComptesInactifs {
+    param( ___$Jours = 90 )
+    Search-ADAccount -AccountInactive -UsersOnly -TimeSpan (New-TimeSpan -Days $Jours)
+}
+```
+= [int]
+~ [string] ;; int ;; (int) ;; [switch]
+? Le type se place entre crochets juste avant le nom : `[int]$Jours`. Un texte comme « abc » serait refusé à l’appel.
+>>> info ¦ Où ranger ses fonctions ?
+- Dans un **script** `.ps1`, avant leur utilisation.
+- Dans ton **profil** (`$PROFILE`, un script exécuté à chaque ouverture de PowerShell) : tes fonctions sont toujours disponibles.
+- Dans un **module** `.psm1` : la bonne pratique pour les partager avec l’équipe (voir plus loin).
+!tip `Get-Verb` te donne les verbes approuvés : une fonction `Check-Disk` déclencherait un avertissement à l’import d’un module ; `Test-Disk` est correct.
+>>> type ps ¦ Appelle la fonction Get-EspaceLibre pour le lecteur D:.
+= Get-EspaceLibre -Lecteur D: ;; Get-EspaceLibre D: ;; Get-EspaceLibre -Lecteur 'D:' ;; Get-EspaceLibre 'D:' ;; Get-EspaceLibre -Lecteur "D:"
+? Le paramètre `-Lecteur` est le premier déclaré : il est donc aussi positionnel.
+
+### LESSON p21 ¦ Gérer les erreurs : try/catch, -ErrorAction ¦ 3 ¦ Un script qui ne s’arrête pas au premier poste éteint, et qui garde une trace.
+>>> info ¦ Deux sortes d’erreurs
+```table
+Sorte ¦ Comportement ¦ Exemple
+**Non bloquante** ¦ message rouge, le script **continue** ¦ `Get-Item` sur un fichier absent
+**Bloquante** (terminating) ¦ la commande s’arrête ¦ erreur de syntaxe, `throw`, paramètre invalide
+```
+La plupart des erreurs des cmdlets sont **non bloquantes** : `try/catch` ne les attrape **pas**, sauf si on les rend bloquantes avec `-ErrorAction Stop`.
+>>> info ¦ -ErrorAction
+```table
+Valeur ¦ Effet
+`Continue` ¦ affiche l’erreur et continue (par défaut)
+`SilentlyContinue` ¦ n’affiche rien et continue
+`Stop` ¦ transforme l’erreur en erreur **bloquante** (attrapable par catch)
+`Inquire` ¦ demande quoi faire
+`Ignore` ¦ ignore complètement (même pas dans `$Error`)
+```
+Alias : `-EA`. Pour tout le script : `$ErrorActionPreference = 'Stop'`.
+>>> info ¦ try / catch / finally
+```code ps
+foreach ($poste in 'PC-COMPTA-01', 'PC-RECEP-02') {
+    try {
+        $opt = New-CimSessionOption -Protocol Dcom
+        $s = New-CimSession -ComputerName $poste -SessionOption $opt -ErrorAction Stop
+        $bios = Get-CimInstance Win32_BIOS -CimSession $s -ErrorAction Stop
+        "$poste : $($bios.SerialNumber)"
+    }
+    catch {
+        Write-Warning "$poste : $($_.Exception.Message)"
+    }
+    finally {
+        if ($s) { Remove-CimSession $s; $s = $null }
+    }
+}
+```
+- `try { }` : le code risqué.
+- `catch { }` : exécuté **si** une erreur bloquante survient ; `$_` y désigne l’erreur.
+- `finally { }` : exécuté **dans tous les cas** (nettoyage).
+>>> qcm ¦ `try { Get-Item C:\absent.txt } catch { 'Introuvable' }` affiche une erreur rouge au lieu de « Introuvable ». Pourquoi ?
++ L’erreur de Get-Item est non bloquante : il faut `-ErrorAction Stop`
+* catch doit être en majuscules
+* Get-Item ne génère jamais d’erreur
+* Il faut un bloc finally
+? Sans `-ErrorAction Stop`, l’erreur est affichée mais ne déclenche pas le catch.
+>>> fill ps ¦ Rends l’erreur attrapable par le catch.
+```code ps
+try {
+    Get-Item C:\Logs\absent.log -ErrorAction ___
+} catch {
+    Write-Warning "Fichier manquant"
+}
+```
+= Stop
+~ SilentlyContinue ;; Continue ;; Catch ;; Break
+? `-ErrorAction Stop` rend l’erreur bloquante : le bloc catch s’exécute et affiche l’avertissement.
+>>> info ¦ Garder une trace : journal et transcription
+```code ps
+Start-Transcript -Path "C:\Logs\script_$(Get-Date -Format yyyyMMdd_HHmm).log"
+# … tout ce qui s’affiche est enregistré …
+Stop-Transcript
+```
+- `Start-Transcript` enregistre **toute** la session (commandes et sorties) dans un fichier.
+- Pour un journal maison : `Add-Content C:\Logs\mon_script.log "$(Get-Date -Format s) $poste OK"`.
+- `$Error[0]` : la dernière erreur de la session, avec tous ses détails.
+!it Un script planifié la nuit n’a personne pour lire l’écran : sans journal, tu ne sauras jamais pourquoi il a échoué.
+>>> type ps ¦ Teste si le fichier C:\Temp\inexistant.txt existe, sans afficher d’erreur rouge.
+= Get-Item C:\Temp\inexistant.txt -ErrorAction SilentlyContinue ;; Get-Item C:\Temp\inexistant.txt -EA SilentlyContinue ;; Test-Path C:\Temp\inexistant.txt ;; Get-Item C:\Temp\inexistant.txt -ErrorAction Ignore ;; Get-Item C:\Temp\inexistant.txt -EA 0 ;; Get-ChildItem C:\Temp\inexistant.txt -ErrorAction SilentlyContinue
+? `Test-Path` est la réponse la plus propre : True/False, jamais d’erreur.
+
+### LESSON p22 ¦ Scripts .ps1 et stratégie d’exécution ¦ 3 ¦ Enregistrer, lancer, signer : pourquoi « l’exécution de scripts est désactivée sur ce système ».
+>>> info ¦ Un fichier .ps1
+Un **script** PowerShell est un fichier texte d’extension **.ps1** contenant des commandes. Bonnes pratiques d’en-tête :
+```script ps C:\Scripts\nettoyage_temp.ps1
+<#
+.SYNOPSIS
+    Supprime les fichiers temporaires de plus de 7 jours.
+.EXAMPLE
+    .\nettoyage_temp.ps1 -Jours 14 -WhatIf
+#>
+[CmdletBinding(SupportsShouldProcess)]
+param([int]$Jours = 7)
+
+$limite = (Get-Date).AddDays(-$Jours)
+Get-ChildItem $env:TEMP -File -Recurse -ErrorAction SilentlyContinue |
+    Where-Object LastWriteTime -lt $limite |
+    Remove-Item -Force -ErrorAction SilentlyContinue
+```
+- `<# … #>` : bloc de commentaire ; avec `.SYNOPSIS` et `.EXAMPLE`, il devient l’**aide** du script (`Get-Help .\nettoyage_temp.ps1`).
+- `[CmdletBinding(SupportsShouldProcess)]` : ton script accepte `-WhatIf` et `-Confirm` comme une vraie cmdlet.
+>>> info ¦ Lancer un script
+```code ps
+cd C:\Scripts
+.\nettoyage_temp.ps1
+& 'C:\Scripts\Mon script.ps1'
+```
+- `.\` est **obligatoire** pour un script du dossier courant : PowerShell ne cherche pas dans le dossier courant par sécurité (contrairement à CMD).
+- `&` (opérateur d’appel) lance un chemin entre guillemets.
+- Double-clic sur un .ps1 : il s’ouvre dans le Bloc-notes, il ne s’exécute pas. Encore une sécurité.
+>>> qcm ¦ Tu es dans C:\Scripts et tu tapes `nettoyage_temp.ps1`. PowerShell répond « n’est pas reconnu ». Pourquoi ?
++ PowerShell n’exécute pas les scripts du dossier courant sans `.\` devant
+* Le fichier est corrompu
+* Il faut taper `run nettoyage_temp.ps1`
+* L’extension doit être .bat
+? Protection contre le « détournement » d’une commande par un fichier du même nom déposé dans le dossier. Tape `.\nettoyage_temp.ps1`.
+>>> info ¦ La stratégie d’exécution
+Par défaut, Windows **client** refuse les scripts : « Impossible de charger le fichier … car l’exécution de scripts est désactivée sur ce système ».
+```table
+Stratégie ¦ Effet
+`Restricted` ¦ aucun script (défaut sur Windows 10/11)
+`AllSigned` ¦ seulement les scripts **signés** par un éditeur approuvé
+`RemoteSigned` ¦ scripts locaux OK ; ceux **téléchargés** doivent être signés (défaut sur Windows Server)
+`Unrestricted` ¦ tout, avec un avertissement pour les fichiers téléchargés
+`Bypass` ¦ rien n’est bloqué, aucun avertissement (pour l’automatisation)
+```
+Elle se règle à plusieurs **niveaux** (`-Scope`) : `MachinePolicy`/`UserPolicy` (GPO, prioritaires), `Process` (fenêtre en cours seulement), `CurrentUser`, `LocalMachine`.
+```code ps
+Get-ExecutionPolicy -List
+Set-ExecutionPolicy RemoteSigned -Scope CurrentUser
+```
+!warn Ce n’est **pas** une barrière de sécurité contre un attaquant (elle se contourne facilement) : c’est un garde-fou contre l’exécution **accidentelle**. En entreprise, on la fixe par GPO (souvent `RemoteSigned` ou `AllSigned`).
+>>> type ps ¦ Autorise les scripts locaux pour ton compte uniquement, sans toucher aux autres utilisateurs.
+= Set-ExecutionPolicy RemoteSigned -Scope CurrentUser ;; Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser ;; Set-ExecutionPolicy -Scope CurrentUser RemoteSigned ;; Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned ;; Set-ExecutionPolicy RemoteSigned -Scope CurrentUser -Force
+>>> info ¦ « Téléchargé » ? La marque du Web
+Un fichier venu d’Internet (navigateur, pièce jointe) porte une **marque** cachée (Zone.Identifier). Avec `RemoteSigned`, il est bloqué tant qu’il n’est pas signé.
+- `Unblock-File C:\Scripts\outil.ps1` retire la marque, **après** avoir relu le script et vérifié sa provenance.
+- Pour une tâche planifiée : `powershell.exe -ExecutionPolicy Bypass -File C:\Scripts\inventaire.ps1` (la stratégie s’applique seulement à ce processus).
+>>> qcm ¦ Une tâche planifiée doit lancer un script sans modifier la stratégie du poste. Quelle commande ?
++ `powershell.exe -ExecutionPolicy Bypass -File C:\Scripts\inventaire.ps1`
+* `Set-ExecutionPolicy Unrestricted -Scope LocalMachine` puis le script
+* `powershell.exe C:\Scripts\inventaire.ps1 -Force`
+* `cmd /c inventaire.ps1`
+? `-ExecutionPolicy` sur la ligne de commande ne vaut que pour ce processus (scope Process). Sauf si une GPO impose une stratégie, qui reste prioritaire.
+
+--- Le parc à distance
+### LESSON p23 ¦ Modules et RSAT ¦ 2 ¦ Ajouter des commandes : ActiveDirectory, DnsServer, GroupPolicy… sur ton poste d’administration.
+>>> info ¦ Les modules
+Un **module** est un paquet de cmdlets. Windows en charge certains automatiquement (Management, Utility, NetTCPIP…), d’autres s’installent.
+```code ps
+Get-Module -ListAvailable
+Import-Module ActiveDirectory
+Get-Command -Module ActiveDirectory | Measure-Object
+```
+- Depuis PowerShell 3, un module installé se charge **tout seul** à la première utilisation d’une de ses commandes.
+- `Get-Module` (sans paramètre) : modules chargés dans la session.
+>>> info ¦ RSAT : les outils d’administration
+Les **RSAT** (**R**emote **S**erver **A**dministration **T**ools) apportent consoles et modules PowerShell pour gérer les serveurs depuis ton PC : Active Directory, DNS, DHCP, stratégies de groupe…
+
+Sur Windows 10/11, ce sont des **fonctionnalités à la demande** :
+```code ps
+Get-WindowsCapability -Online -Name Rsat* | Select-Object Name, State
+Add-WindowsCapability -Online -Name Rsat.ActiveDirectory.DS-LDS.Tools~~~~0.0.1.0
+```
+!it Bonne pratique : installe les RSAT sur ton **poste d’administration**, pas sur les contrôleurs de domaine où tu ouvrirais une session pour chaque tâche.
+>>> type ps ¦ Liste les fonctionnalités RSAT et leur état d’installation.
+= Get-WindowsCapability -Online -Name Rsat* ;; Get-WindowsCapability -Online -Name RSAT* ;; Get-WindowsCapability -Online | Where-Object Name -like 'Rsat*' ;; Get-WindowsCapability -Online -Name Rsat* | Select-Object Name, State ;; Get-WindowsCapability -Name Rsat* -Online
+>>> info ¦ PowerShell Gallery
+La **PowerShell Gallery** est le dépôt public de modules (`Find-Module`, `Install-Module`). Exemples utiles : `ImportExcel` (écrire de vrais .xlsx sans Excel), `PSWindowsUpdate`.
+```code ps
+Install-Module ImportExcel -Scope CurrentUser
+```
+!warn Un module de la galerie est du **code tiers** : vérifie l’éditeur, le nombre de téléchargements et lis-le avant de l’installer sur un poste d’administration.
+>>> qcm ¦ Où installer de préférence les outils RSAT ?
++ Sur le poste d’administration du technicien
+* Sur chaque poste utilisateur
+* Uniquement sur le contrôleur de domaine
+* Sur le serveur de fichiers
+? On administre **à distance** depuis un poste dédié, plutôt que d’ouvrir des sessions interactives sur les serveurs.
+
+### LESSON p24 ¦ Administrer à distance sans WinRM ¦ 4 ¦ La boîte à outils quand PowerShell Remoting n’est pas activé : RPC, SMB, DCOM, RDP.
+>>> info ¦ Le contexte
+Beaucoup de cours présentent `Invoke-Command` et `Enter-PSSession` pour agir à distance. Ces commandes reposent sur **WinRM** (Windows Remote Management, ports 5985/5986), un service **désactivé par défaut** sur les postes Windows et que de nombreuses entreprises choisissent de ne pas activer.
+
+Sur un tel parc, ces commandes échouent : « La connexion au serveur distant … a échoué … WinRM ». Bonne nouvelle : presque tout reste faisable par d’autres canaux.
+```table
+Canal ¦ Port ¦ Utilisé par
+**SMB** ¦ 445 ¦ partages d’administration `\\PC\C$`, `\\PC\ADMIN$`, PsExec
+**RPC** ¦ 135 + ports dynamiques ¦ `sc \\PC`, `tasklist /s`, `shutdown /m`, `Get-Service -ComputerName`, `Get-WinEvent -ComputerName`, `reg \\PC`
+**DCOM/WMI** ¦ 135 + dynamiques ¦ `New-CimSession` en DCOM, `Get-WmiObject -ComputerName`, `Restart-Computer -ComputerName` (5.1)
+**RDP** ¦ 3389 ¦ `mstsc /v:PC`, `mstsc /shadow`
+```
+>>> info ¦ Les partages d’administration
+Chaque Windows partage automatiquement ses disques pour les **administrateurs** : `C$`, `D$`, et `ADMIN$` (= `C:\Windows`).
+```code ps
+Get-ChildItem \\PC-COMPTA-02\C$\Users
+Copy-Item C:\Tools\correctif.msi \\PC-COMPTA-02\C$\Temp\
+Get-Content \\PC-COMPTA-02\C$\Windows\Logs\CBS\CBS.log -Tail 20
+```
+!tip Le `$` final rend un partage **caché** : il n’apparaît pas dans la liste du serveur, mais reste accessible à qui connaît son nom et a les droits.
+>>> type ps ¦ Liste les profils présents sur PC-COMPTA-02 via le partage d’administration.
+= Get-ChildItem \\PC-COMPTA-02\C$\Users ;; gci \\PC-COMPTA-02\C$\Users ;; dir \\PC-COMPTA-02\C$\Users ;; ls \\PC-COMPTA-02\C$\Users ;; Get-ChildItem -Path \\PC-COMPTA-02\C$\Users ;; Get-ChildItem '\\PC-COMPTA-02\C$\Users' ;; Get-ChildItem "\\PC-COMPTA-02\C$\Users"
+>>> info ¦ Services, processus, journaux, redémarrage
+```code ps
+Get-Service -ComputerName PC-COMPTA-02 -Name Spooler | Restart-Service
+sc.exe \\PC-COMPTA-02 query spooler
+tasklist /s PC-COMPTA-02 /fi "imagename eq outlook.exe"
+Get-WinEvent -ComputerName PC-COMPTA-02 -FilterHashtable @{LogName='System'; Level=2} -MaxEvents 10
+Restart-Computer -ComputerName PC-COMPTA-02 -Force
+shutdown /r /m \\PC-COMPTA-02 /t 300 /c "Redémarrage pour maintenance dans 5 minutes"
+```
+!warn Dans PowerShell, `sc` est l’alias de Set-Content : écris toujours **`sc.exe`**.
+>>> qcm ¦ Lequel de ces outils fonctionne sur un poste dont WinRM est désactivé ?
++ `Get-WinEvent -ComputerName PC-COMPTA-02 …`
+* `Enter-PSSession PC-COMPTA-02`
+* `Invoke-Command -ComputerName PC-COMPTA-02 { … }`
+* `New-PSSession PC-COMPTA-02`
+? Get-WinEvent -ComputerName utilise le service distant du journal (RPC). Les trois autres reposent sur WinRM.
+>>> info ¦ Inventaire : CIM en DCOM
+```code ps
+$opt = New-CimSessionOption -Protocol Dcom
+$s = New-CimSession -ComputerName PC-COMPTA-02 -SessionOption $opt
+Get-CimInstance Win32_ComputerSystem -CimSession $s | Select-Object Name, Model, UserName
+Get-CimInstance Win32_LogicalDisk -CimSession $s -Filter "DriveType=3"
+Remove-CimSession $s
+```
+`UserName` de Win32_ComputerSystem donne l’utilisateur **connecté à la console** : pratique avant d’intervenir.
+>>> fill ps ¦ Crée une session CIM qui n’utilise pas WinRM.
+```code ps
+$opt = New-CimSessionOption -Protocol ___
+$s = New-CimSession -ComputerName PC-RH-01 -___ $opt
+```
+= Dcom ;; SessionOption
+~ Wsman ;; WinRM ;; Option ;; Credential
+? `Wsman` est justement le protocole de WinRM. `Dcom` passe par RPC (port 135).
+>>> info ¦ Exécuter une commande sur le poste : PsExec
+**PsExec** (suite Sysinternals de Microsoft) copie un petit service par `ADMIN$`, le démarre par RPC et exécute ta commande sur le poste distant :
+```code cmd
+psexec \\PC-COMPTA-02 ipconfig /flushdns
+psexec \\PC-COMPTA-02 -s gpupdate /force
+psexec \\PC-COMPTA-02 -s powershell.exe -NoProfile -Command "Get-Volume"
+```
+- `-s` : exécute en tant que **SYSTEM** (droits complets sur le poste).
+- `-i` : interactif, sur le bureau de l’utilisateur (à éviter sans prévenir).
+!warn PsExec laisse un service temporaire et des traces : beaucoup d’antivirus le surveillent. Utilise-le selon la politique de ton équipe, et jamais pour une commande que tu ne comprendrais pas.
+>>> info ¦ Voir l’écran de l’utilisateur
+```table
+Outil ¦ Usage
+`mstsc /v:PC-COMPTA-02` ¦ bureau à distance (ouvre **ta** session ; l’utilisateur est déconnecté sur un poste client)
+`mstsc /v:PC-COMPTA-02 /shadow:2 /control` ¦ **observer** (et contrôler avec `/control`) la session n°2 de l’utilisateur ; `quser /server:` donne le numéro
+`/noConsentPrompt` ¦ sans demander l’accord, si la GPO l’autorise : à réserver aux cas prévus par la politique interne
+**Assistance rapide** (Quick Assist) ¦ l’utilisateur lance l’outil, te communique un code : idéal pour un poste hors domaine ou en télétravail
+```
+>>> order cmd ¦ Construis la commande qui observe et contrôle la session n°2 de PC-COMPTA-02.
+~ mstsc ;; /v:PC-COMPTA-02 ;; /shadow:2 ;; /control
+x~ /admin ;; /f
+? Sans `/control`, tu ne fais que regarder. L’utilisateur reçoit une demande d’autorisation, sauf configuration contraire.
+>>> qcm ¦ Un collègue propose de lancer `winrm quickconfig` sur tous les postes pour utiliser Invoke-Command. Dans une entreprise qui a fait le choix de ne pas activer WinRM, que fais-tu ?
++ Tu utilises les canaux déjà autorisés (RPC, SMB, DCOM, RDP) et tu ne modifies pas la configuration de sécurité de ta propre initiative
+* Tu actives WinRM sur ton poste seulement
+* Tu actives WinRM par GPO pour aller plus vite
+* Tu désactives le pare-feu des postes
+? Ouvrir un service d’administration à distance est une **décision de sécurité** qui appartient à l’entreprise. Ta boîte à outils couvre déjà l’essentiel.
+>>> info ¦ Bilan de la piste PowerShell
+- Grammaire **Verbe-Nom**, paramètres, aide, objets et `Get-Member`.
+- Pipeline : filtrer à gauche, formater à droite, exporter pour Excel.
+- Administration : fichiers, processus, services, CIM, journaux, réseau, Registre.
+- Scripts : variables, conditions, boucles, fonctions, erreurs, stratégie d’exécution.
+- À distance **sans WinRM** : partages d’administration, RPC, CIM en DCOM, PsExec, RDP.
+
+!tip Suite logique : la piste **Active Directory**, puis les **tickets** qui mélangent tout ce que tu as appris.

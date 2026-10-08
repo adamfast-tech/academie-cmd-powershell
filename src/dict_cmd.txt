@@ -1,0 +1,738 @@
+@@ cmd cd ¦ Fichiers ¦ Affiche ou change le dossier courant. ¦ [C]hange [D]irectory
+syn: cd [/d] [lecteur:][chemin]
+syn: cd ..
+/d ¦ [D]rive ¦ Change aussi de lecteur (sinon seul le dossier mémorisé de l’autre lecteur change).
+ex: cd /d D:\Backup ¦ Aller sur D: et dans Backup en une fois.
+ex: cd .. ¦ Remonter d’un niveau (`..` = dossier parent).
+ex: cd \ ¦ Revenir à la racine du lecteur.
+note: `chdir` est un synonyme. Sans argument, `cd` affiche le dossier courant.
+see: `pushd`, `popd`, `Set-Location`
+
+@@ cmd dir ¦ Fichiers ¦ Liste les fichiers et dossiers. ¦ [DIR]ectory
+syn: dir [chemin][motif] [/a[:attr]] [/o[:tri]] [/s] [/b] [/w] [/p] [/q] [/t[:c|a|w]]
+/a ¦ [A]ttributes ¦ Filtre par attributs : `h` caché, `s` système, `d` dossier, `r` lecture seule, `a` archive, `-` pour inverser. `/a` seul : tout.
+/o ¦ [O]rder ¦ Tri : `n` nom, `s` taille (size), `d` date, `e` extension, `g` dossiers d’abord (group), `-` inverse.
+/s ¦ [S]ubdirectories ¦ Parcourt tous les sous-dossiers.
+/b ¦ [B]are ¦ Format brut : un nom par ligne (chemin complet avec /s).
+/w ¦ [W]ide ¦ Affichage large en colonnes.
+/p ¦ [P]ause ¦ Pause à chaque écran.
+/q ¦ « [Q]ui possède ? » (pas d’abréviation officielle) ¦ Affiche le propriétaire de chaque fichier.
+/t ¦ [T]ime field ¦ Quelle date afficher/trier : `c` création, `a` dernier accès, `w` écriture.
+/l ¦ [L]owercase ¦ Noms en minuscules.
+/4 ¦ — ¦ Années sur 4 chiffres.
+ex: dir /a:h ¦ Seulement les éléments cachés.
+ex: dir C:\Users\*.pst /s /b ¦ Trouver tous les .pst.
+ex: dir C:\Data /o:-s ¦ Du plus gros au plus petit.
+see: `Get-ChildItem`, `tree`, `where`
+
+@@ cmd tree ¦ Fichiers ¦ Dessine l’arborescence des dossiers. ¦ [TREE] : arbre
+syn: tree [chemin] [/f] [/a]
+/f ¦ [F]iles ¦ Affiche aussi les fichiers.
+/a ¦ [A]SCII ¦ Caractères ASCII simples (pour copier dans un fichier texte).
+ex: tree C:\Data /f ¦ Toute l’arborescence avec les fichiers.
+
+@@ cmd md ¦ Fichiers ¦ Crée un dossier (et les dossiers intermédiaires). ¦ [M]ake [D]irectory
+syn: md chemin
+ex: md C:\Temp\Audit\2026 ¦ Crée Audit puis 2026 si besoin.
+note: `mkdir` est un synonyme.
+see: `New-Item -ItemType Directory`
+
+@@ cmd rd ¦ Fichiers ¦ Supprime un dossier. ¦ [R]emove [D]irectory
+syn: rd [/s] [/q] chemin
+/s ¦ [S]ubtree ¦ Supprime aussi tout le contenu (sinon le dossier doit être vide).
+/q ¦ [Q]uiet ¦ Sans demander de confirmation.
+ex: rd /s /q C:\Temp\Audit ¦ Supprime le dossier et tout son contenu. Irréversible.
+note: `rmdir` est un synonyme. Pas de corbeille en ligne de commande.
+see: `Remove-Item -Recurse`
+
+@@ cmd del ¦ Fichiers ¦ Supprime des fichiers. ¦ [DEL]ete
+syn: del [/p] [/f] [/s] [/q] [/a[:attr]] fichiers
+/p ¦ [P]rompt ¦ Demande confirmation pour chaque fichier.
+/f ¦ [F]orce ¦ Supprime aussi les fichiers en lecture seule.
+/s ¦ [S]ubdirectories ¦ Supprime dans tous les sous-dossiers.
+/q ¦ [Q]uiet ¦ Pas de confirmation pour les jokers globaux.
+/a ¦ [A]ttributes ¦ Sélectionne selon les attributs (`h` cachés…).
+ex: del /q /f %SystemRoot%\System32\spool\PRINTERS\*.* ¦ Vider la file d’impression (spouleur arrêté).
+ex: del /s /q %TEMP%\*.tmp ¦ Supprimer les .tmp du profil.
+note: `erase` est un synonyme. Pas de corbeille.
+see: `Remove-Item`
+
+@@ cmd copy ¦ Fichiers ¦ Copie un ou plusieurs fichiers. ¦ [COPY] : copier
+syn: copy [/y] [/v] source [destination]
+/y ¦ [Y]es ¦ Écrase sans demander.
+/-y ¦ — ¦ Demande avant d’écraser.
+/v ¦ [V]erify ¦ Vérifie l’écriture.
+/b ¦ [B]inary ¦ Copie binaire.
+ex: copy C:\Data\nouveaux.csv D:\Backup\ ¦ Copier un fichier.
+ex: copy /y "%~dp0config.ini" "%USERPROFILE%\" ¦ Dans un script, depuis le dossier du script.
+note: Ne copie pas les sous-dossiers : utiliser `xcopy` ou `robocopy`.
+see: `xcopy`, `robocopy`, `Copy-Item`
+
+@@ cmd xcopy ¦ Fichiers ¦ Copie des arborescences (ancienne génération). ¦ e[X]tended [COPY]
+syn: xcopy source destination [/s] [/e] [/h] [/y] [/i] [/d[:date]] [/c] [/k]
+/s ¦ [S]ubdirectories ¦ Copie les sous-dossiers non vides.
+/e ¦ [E]mpty ¦ Copie aussi les sous-dossiers vides (avec /s).
+/h ¦ [H]idden ¦ Inclut les fichiers cachés et système.
+/y ¦ [Y]es ¦ Écrase sans demander.
+/i ¦ [I]s a directory ¦ Considère que la destination est un dossier.
+/d ¦ [D]ate ¦ Seulement les fichiers plus récents (ou modifiés depuis la date).
+/c ¦ [C]ontinue ¦ Continue malgré les erreurs.
+/k ¦ [K]eep ¦ Conserve les attributs (lecture seule…).
+ex: xcopy C:\Data D:\Backup\Data /s /e /h /i /y ¦ Copie complète d’un dossier.
+see: `robocopy`
+
+@@ cmd robocopy ¦ Fichiers ¦ Copie robuste : reprise, miroir, journal, multithread. ¦ [ROBU]st file [COPY]
+syn: robocopy source destination [fichiers] [options]
+/s ¦ [S]ubdirectories ¦ Sous-dossiers non vides.
+/e ¦ [E]mpty ¦ Tous les sous-dossiers, même vides.
+/mir ¦ [MIR]ror ¦ Miroir : `/e` + supprime de la destination ce qui n’existe plus à la source. Attention aux suppressions.
+/mov ¦ [MOV]e files ¦ Déplace les fichiers (supprime la source après copie).
+/move ¦ [MOVE] ¦ Déplace fichiers et dossiers.
+/z ¦ restartable mode ¦ Mode reprise : continue une copie interrompue (réseau instable).
+/b ¦ [B]ackup mode ¦ Mode sauvegarde : contourne les droits NTFS (privilège requis).
+/copy ¦ [COPY] flags ¦ Quoi copier : `D` données, `A` attributs, `T` dates, `S` sécurité, `O` propriétaire, `U` audit. Défaut : DAT.
+/copyall ¦ [COPY ALL] ¦ Équivaut à `/copy:DATSOU` (avec les droits).
+/r ¦ [R]etries ¦ Nombre de nouvelles tentatives (défaut : 1 million !). Ex. `/r:2`.
+/w ¦ [W]ait ¦ Secondes entre deux tentatives (défaut : 30). Ex. `/w:5`.
+/xf ¦ e[X]clude [F]iles ¦ Exclut des fichiers (`/xf *.tmp ~*`).
+/xd ¦ e[X]clude [D]irectories ¦ Exclut des dossiers.
+/minage ¦ [MIN]imum [AGE] ¦ Ignore les fichiers plus récents que N jours.
+/maxage ¦ [MAX]imum [AGE] ¦ Ignore les fichiers plus vieux que N jours.
+/l ¦ [L]ist only ¦ Simulation : liste sans rien copier.
+/log ¦ [LOG] ¦ Écrit le journal dans un fichier (`/log+:` pour ajouter).
+/tee ¦ [TEE] ¦ Journal à l’écran ET dans le fichier.
+/np ¦ [N]o [P]rogress ¦ Pas de pourcentage (journal plus lisible).
+/mt ¦ [M]ulti[T]hread ¦ Copie parallèle (`/mt:16`).
+/xo ¦ e[X]clude [O]lder ¦ N’écrase pas un fichier plus récent à la destination.
+ex: robocopy C:\Data D:\Backup /MIR /R:2 /W:5 /NP /LOG+:C:\Logs\backup.log ¦ Sauvegarde miroir avec journal.
+ex: robocopy \\SRV-FICHIERS\Compta D:\Compta /E /Z /COPYALL /L ¦ Simulation d’une migration avec les droits.
+note: Codes de retour : 0 rien à faire, 1 copie OK, 2 extras, 4 différences, 8 et plus = échec. Tester `if %ERRORLEVEL% GEQ 8`.
+see: `xcopy`, `Copy-Item`
+
+@@ cmd move ¦ Fichiers ¦ Déplace ou renomme des fichiers et dossiers. ¦ [MOVE] : déplacer
+syn: move [/y] source destination
+/y ¦ [Y]es ¦ Écrase sans demander.
+ex: move C:\Temp\rapport.pdf D:\Archives\ ¦ Déplacer un fichier.
+see: `Move-Item`
+
+@@ cmd ren ¦ Fichiers ¦ Renomme un fichier ou un dossier. ¦ [REN]ame
+syn: ren ancien_nom nouveau_nom
+ex: ren rapport.txt rapport_2026.txt ¦ Le nouveau nom ne contient pas de chemin.
+ex: ren *.log *.old ¦ Changer l’extension de plusieurs fichiers.
+note: `rename` est un synonyme.
+see: `Rename-Item`
+
+@@ cmd type ¦ Texte ¦ Affiche le contenu d’un fichier texte. ¦ [TYPE] : taper, afficher
+syn: type fichier
+ex: type C:\Logs\app.log ¦ Lire un journal.
+ex: type C:\Logs\app.log | more ¦ Page par page.
+see: `more`, `Get-Content`
+
+@@ cmd more ¦ Texte ¦ Affiche page par page. ¦ [MORE] : encore
+syn: commande | more
+syn: more fichier
+ex: netstat -ano | more ¦ Espace = page suivante, Entrée = ligne suivante, Q = quitter.
+
+@@ cmd echo ¦ Texte ¦ Affiche un message, ou active/désactive l’écho des commandes. ¦ [ECHO] : écho
+syn: echo [texte] | echo on | echo off | echo.
+ex: echo Bonjour %USERNAME% ¦ Afficher un message avec une variable.
+ex: echo. ¦ Ligne vide.
+ex: echo Fin >> C:\Logs\journal.txt ¦ Ajouter une ligne à un fichier.
+note: `@echo off` en tête de script : n’affiche pas les commandes.
+
+@@ cmd find ¦ Texte ¦ Cherche une chaîne exacte dans des fichiers ou une sortie. ¦ [FIND] : trouver
+syn: find [/i] [/v] [/c] [/n] "texte" [fichier]
+/i ¦ [I]gnore case ¦ Ignore majuscules/minuscules.
+/v ¦ in[V]ert ¦ Lignes qui NE contiennent PAS le texte.
+/c ¦ [C]ount ¦ Compte les lignes trouvées.
+/n ¦ [N]umber ¦ Affiche les numéros de ligne.
+ex: ping -n 1 srv-ad01 | find "TTL" ¦ ERRORLEVEL 0 si une vraie réponse est arrivée.
+ex: find /c /v "" fichier.txt ¦ Compter les lignes d’un fichier.
+note: Le texte DOIT être entre guillemets.
+see: `findstr`, `Select-String`
+
+@@ cmd findstr ¦ Texte ¦ Cherche des chaînes ou des expressions régulières. ¦ [FIND] [STR]ing
+syn: findstr [/i] [/s] [/n] [/v] [/b] [/e] [/r] [/c:"texte"] motifs [fichiers]
+/i ¦ [I]gnore case ¦ Insensible à la casse.
+/s ¦ [S]ubdirectories ¦ Cherche aussi dans les sous-dossiers.
+/n ¦ [N]umber ¦ Numéros de ligne.
+/v ¦ in[V]ert ¦ Lignes sans correspondance.
+/b ¦ [B]eginning ¦ Le motif doit être en début de ligne.
+/e ¦ [E]nd ¦ Le motif doit être en fin de ligne.
+/r ¦ [R]egex ¦ Motifs = expressions régulières (par défaut pour les motifs simples).
+/l ¦ [L]iteral ¦ Motifs pris littéralement.
+/c: ¦ [C]hercher la chaîne exacte ¦ Phrase exacte, espaces compris. Répétable.
+/m ¦ [M]atching files ¦ Affiche seulement le nom des fichiers qui correspondent.
+ex: findstr /i "erreur echec" C:\Logs\*.log ¦ Lignes contenant erreur OU echec.
+ex: systeminfo | findstr /b /c:"Nom du système" ¦ Phrase exacte en début de ligne.
+ex: findstr /s /i /m "SRV-APP01" C:\Scripts\* ¦ Quels scripts mentionnent ce serveur ?
+note: Plusieurs mots sans `/c:` = OU logique.
+see: `find`, `Select-String`
+
+@@ cmd sort ¦ Texte ¦ Trie des lignes. ¦ [SORT] : trier
+syn: commande | sort [/r]
+/r ¦ [R]everse ¦ Ordre inverse.
+ex: type liste.txt | sort ¦ Trier une liste.
+
+@@ cmd fc ¦ Texte ¦ Compare deux fichiers. ¦ [F]ile [C]ompare
+syn: fc [/b] [/n] fichier1 fichier2
+/b ¦ [B]inary ¦ Comparaison binaire.
+/n ¦ [N]umbers ¦ Numéros de ligne.
+ex: fc C:\Scripts\v1.bat C:\Scripts\v2.bat ¦ Voir les différences entre deux versions.
+see: `Compare-Object`
+
+@@ cmd attrib ¦ Fichiers ¦ Affiche ou modifie les attributs de fichiers. ¦ [ATTRIB]utes
+syn: attrib [+r|-r] [+h|-h] [+s|-s] [+a|-a] fichier [/s] [/d]
+sw: +r ¦ [R]ead-only ¦ `+` ajoute, `-` retire : lecture seule.
+sw: +h ¦ [H]idden ¦ Caché.
+sw: +s ¦ [S]ystem ¦ Fichier système.
+sw: +a ¦ [A]rchive ¦ À sauvegarder (modifié depuis la dernière sauvegarde).
+/s ¦ [S]ubdirectories ¦ Applique aux fichiers des sous-dossiers.
+/d ¦ [D]irectories ¦ Applique aussi aux dossiers.
+ex: attrib -h -s -r E:\* /s /d ¦ Faire réapparaître les fichiers d’une clé USB.
+ex: attrib +r C:\Scripts\sauvegarde.bat ¦ Protéger un script contre la modification.
+
+@@ cmd icacls ¦ Fichiers ¦ Affiche ou modifie les permissions NTFS. ¦ [I]ntegrity [C]ontrol [ACL]s
+syn: icacls chemin [/grant utilisateur:droits] [/remove utilisateur] [/reset] [/t] [/c] [/save] [/restore]
+/grant ¦ [GRANT] ¦ Accorde un droit : `F` total, `M` modifier, `RX` lire et exécuter, `R` lecture, `W` écriture.
+/deny ¦ [DENY] ¦ Refus explicite (prioritaire : à éviter).
+/remove ¦ [REMOVE] ¦ Retire les entrées d’un compte.
+/reset ¦ [RESET] ¦ Remplace par les droits hérités.
+/inheritance ¦ [INHERITANCE] ¦ `e` activer, `d` désactiver en copiant, `r` désactiver en supprimant.
+/t ¦ [T]ree ¦ Applique à tout le contenu.
+/c ¦ [C]ontinue ¦ Continue malgré les erreurs.
+/save ¦ [SAVE] ¦ Sauvegarde les ACL dans un fichier.
+/restore ¦ [RESTORE] ¦ Restaure les ACL sauvegardées.
+ex: icacls D:\Partages\Compta ¦ Voir les droits.
+ex: icacls D:\Partages\Compta /grant "CONTOSO\DL_Partage_Compta_RW:(OI)(CI)M" ¦ Modifier, hérité par fichiers (OI) et dossiers (CI).
+note: `(OI)` = Object Inherit (fichiers), `(CI)` = Container Inherit (dossiers), `(IO)` = Inherit Only, `(I)` = hérité.
+see: `takeown`, `Get-Acl`
+
+@@ cmd takeown ¦ Fichiers ¦ Prend possession d’un fichier ou dossier. ¦ [TAKE] [OWN]ership
+syn: takeown /f chemin [/r] [/a] [/d o]
+/f ¦ [F]ile ¦ Le fichier ou dossier visé.
+/r ¦ [R]ecurse ¦ Tout le contenu.
+/a ¦ [A]dministrators ¦ Donne la propriété au groupe Administrateurs (au lieu de soi).
+/d ¦ [D]efault answer ¦ Réponse par défaut aux questions (`o` oui).
+ex: takeown /f D:\Ancien_Profil /r /a /d o ¦ Récupérer un dossier dont les droits sont cassés.
+adm: Administrateur requis
+
+@@ cmd where ¦ Fichiers ¦ Trouve l’emplacement d’un programme ou de fichiers. ¦ [WHERE] : où
+syn: where [/r dossier] motif
+/r ¦ [R]ecursive ¦ Cherche récursivement à partir d’un dossier.
+ex: where robocopy ¦ Quel exécutable sera lancé (cherche dans PATH).
+ex: where /r C:\Users *.pst ¦ Chercher des fichiers.
+note: Dans PowerShell, `where` est un alias de Where-Object : taper `where.exe`.
+
+@@ cmd mklink ¦ Fichiers ¦ Crée un lien symbolique ou une jonction. ¦ [M]a[K]e [LINK]
+syn: mklink [/d] [/h] [/j] lien cible
+/d ¦ [D]irectory ¦ Lien symbolique vers un dossier.
+/h ¦ [H]ard link ¦ Lien physique (fichier).
+/j ¦ [J]unction ¦ Jonction de dossier.
+ex: mklink /d C:\Partage \\SRV-FICHIERS\Partage ¦ Faire apparaître un partage comme dossier local.
+adm: Administrateur requis (sauf mode développeur)
+
+@@ cmd certutil ¦ Fichiers ¦ Outil certificats ; sert souvent à calculer une empreinte. ¦ [CERT]ificate [UTIL]ity
+syn: certutil -hashfile fichier [SHA256|SHA1|MD5]
+-hashfile ¦ [HASH] [FILE] ¦ Calcule l’empreinte d’un fichier.
+ex: certutil -hashfile C:\Tools\installeur.msi SHA256 ¦ Vérifier qu’un téléchargement n’est pas altéré.
+see: `Get-FileHash`
+
+@@ cmd ipconfig ¦ Réseau ¦ Affiche et gère la configuration IP. ¦ [IP] [CONFIG]uration
+syn: ipconfig [/all] [/release] [/renew] [/flushdns] [/displaydns] [/registerdns]
+/all ¦ [ALL] ¦ Tout : adresse MAC, DHCP, DNS, bail.
+/release ¦ [RELEASE] ¦ Rend le bail DHCP.
+/renew ¦ [RENEW] ¦ Demande un nouveau bail DHCP.
+/flushdns ¦ [FLUSH] [DNS] ¦ Vide le cache DNS du poste.
+/displaydns ¦ [DISPLAY] [DNS] ¦ Affiche le cache DNS.
+/registerdns ¦ [REGISTER] [DNS] ¦ Réenregistre le nom du poste dans le DNS.
+ex: ipconfig /all ¦ Diagnostic complet.
+ex: ipconfig /release && ipconfig /renew ¦ Renouveler l’adresse.
+note: 169.254.x.x = APIPA : aucun serveur DHCP n’a répondu.
+see: `Get-NetIPConfiguration`, `Clear-DnsClientCache`
+
+@@ cmd ping ¦ Réseau ¦ Teste la joignabilité d’une machine (ICMP). ¦ Bruit du sonar : « ping »
+syn: ping [-t] [-n nombre] [-l taille] [-w délai] [-a] [-4] cible
+-t ¦ [T]oujours (until stopped) ¦ En continu, jusqu’à Ctrl+C.
+-n ¦ [N]umber ¦ Nombre de requêtes (défaut 4).
+-l ¦ [L]ength ¦ Taille des données envoyées.
+-w ¦ [W]ait ¦ Délai d’attente en millisecondes.
+-a ¦ [A]ddress → name ¦ Résout l’adresse en nom.
+-4 ¦ IPv[4] ¦ Force IPv4.
+-f ¦ [F]ragment interdit ¦ Bit « ne pas fragmenter » (tests de MTU).
+ex: ping -n 1 -w 300 192.168.10.61 ¦ Un seul essai rapide.
+ex: ping -t srv-fichiers ¦ Surveiller une coupure.
+note: Un pare-feu peut bloquer le ping alors que le service fonctionne : tester le port avec `Test-NetConnection`.
+see: `Test-Connection`, `tracert`
+
+@@ cmd tracert ¦ Réseau ¦ Affiche chaque routeur traversé jusqu’à la cible. ¦ [TRACE] [R]ou[T]e
+syn: tracert [-d] [-h sauts] [-w délai] cible
+-d ¦ no [D]NS ¦ Ne résout pas les noms (beaucoup plus rapide).
+-h ¦ [H]ops ¦ Nombre maximal de sauts.
+-w ¦ [W]ait ¦ Délai par réponse.
+ex: tracert -d 8.8.8.8 ¦ Où s’arrête la route ?
+see: `pathping`, `Test-NetConnection -TraceRoute`
+
+@@ cmd pathping ¦ Réseau ¦ tracert + statistiques de perte par saut. ¦ [PATH] + [PING]
+syn: pathping [-n] cible
+-n ¦ [N]umeric ¦ Sans résolution de noms.
+ex: pathping -n outlook.office365.com ¦ Repérer le routeur qui perd des paquets.
+
+@@ cmd nslookup ¦ Réseau ¦ Interroge un serveur DNS. ¦ [N]ame [S]erver [LOOKUP]
+syn: nslookup [-type=A|MX|SRV|TXT|PTR] nom [serveur]
+-type ¦ [TYPE] d’enregistrement ¦ `A` adresse IPv4, `AAAA` IPv6, `MX` messagerie, `SRV` service, `TXT`, `PTR` inverse, `NS`.
+ex: nslookup srv-fichiers ¦ Quelle adresse ?
+ex: nslookup srv-fichiers 8.8.8.8 ¦ Interroger un autre serveur DNS.
+ex: nslookup -type=SRV _ldap._tcp.dc._msdcs.contoso.local ¦ Liste des contrôleurs de domaine.
+see: `Resolve-DnsName`
+
+@@ cmd netstat ¦ Réseau ¦ Affiche les connexions et ports ouverts. ¦ [NET]work [STAT]istics
+syn: netstat [-a] [-n] [-o] [-b] [-r] [-e] [-s] [intervalle]
+-a ¦ [A]ll ¦ Toutes les connexions et ports en écoute.
+-n ¦ [N]umeric ¦ Adresses et ports en chiffres (plus rapide).
+-o ¦ [O]wner PID ¦ Affiche le PID du processus.
+-b ¦ [B]inary ¦ Nom de l’exécutable (administrateur).
+-r ¦ [R]outing ¦ Table de routage.
+-e ¦ [E]thernet ¦ Statistiques de la carte.
+-s ¦ [S]tatistics ¦ Statistiques par protocole.
+ex: netstat -ano | findstr :3389 ¦ Qui écoute sur le port RDP ?
+see: `Get-NetTCPConnection`
+
+@@ cmd arp ¦ Réseau ¦ Table de correspondance IP ↔ MAC. ¦ [A]ddress [R]esolution [P]rotocol
+syn: arp -a | arp -d *
+-a ¦ [A]ll ¦ Affiche la table.
+-d ¦ [D]elete ¦ Vide la table (administrateur).
+ex: arp -a ¦ Machines vues récemment sur le réseau local.
+
+@@ cmd route ¦ Réseau ¦ Affiche ou modifie la table de routage. ¦ [ROUTE] : itinéraire
+syn: route print | route add réseau mask masque passerelle [-p]
+sw: print ¦ [PRINT] ¦ Affiche la table.
+-p ¦ [P]ersistent ¦ Route conservée au redémarrage.
+ex: route print -4 ¦ Routes IPv4.
+
+@@ cmd getmac ¦ Réseau ¦ Affiche les adresses MAC. ¦ [GET] [MAC] address
+syn: getmac [/v] [/s ordinateur] [/fo table|list|csv]
+/v ¦ [V]erbose ¦ Avec le nom de la carte.
+/s ¦ [S]ystem ¦ Ordinateur distant.
+/fo ¦ [F]ormat [O]utput ¦ Format de sortie.
+ex: getmac /v ¦ Pour une réservation DHCP.
+
+@@ cmd netsh ¦ Réseau ¦ Configuration réseau avancée (Wi-Fi, pare-feu, proxy, IP). ¦ [NET]work [SH]ell
+syn: netsh contexte commande
+ex: netsh wlan show profiles ¦ Réseaux Wi-Fi enregistrés.
+ex: netsh advfirewall show allprofiles state ¦ État du pare-feu.
+ex: netsh winhttp show proxy ¦ Proxy système.
+ex: netsh interface ip show config ¦ Configuration IP.
+note: Préférer les cmdlets PowerShell (NetTCPIP, NetSecurity) pour les scripts récents.
+
+@@ cmd net ¦ Réseau ¦ Couteau suisse : partages, comptes, groupes, services. ¦ [NET]work
+syn: net use | net share | net view | net user | net localgroup | net group | net accounts | net start | net stop | net session | net time
+sw: use ¦ [USE] ¦ Connecte un lecteur réseau : `net use Z: \\SRV-FICHIERS\Compta /persistent:yes`.
+sw: share ¦ [SHARE] ¦ Partages du poste (dont C$, ADMIN$, IPC$).
+sw: view ¦ [VIEW] ¦ Partages d’un serveur : `net view \\SRV-FICHIERS`.
+sw: user ¦ [USER] ¦ Comptes locaux ; avec `/domain`, comptes du domaine.
+sw: localgroup ¦ [LOCAL] [GROUP] ¦ Groupes locaux : `net localgroup administrateurs`.
+sw: group ¦ [GROUP] ¦ Groupes du domaine (avec `/domain`).
+sw: accounts ¦ [ACCOUNTS] ¦ Stratégie de mot de passe.
+sw: start / stop ¦ [START] / [STOP] ¦ Démarre / arrête un service (attend la fin).
+sw: session ¦ [SESSION] ¦ Qui est connecté à mes partages.
+/domain ¦ [DOMAIN] ¦ Interroge le contrôleur de domaine.
+/delete ¦ [DELETE] ¦ Supprime (ex. `net use Z: /delete`).
+/persistent ¦ [PERSISTENT] ¦ `yes` : reconnecter à l’ouverture de session.
+ex: net use ¦ Lecteurs réseau connectés.
+ex: net user mlefevre /domain ¦ État du compte (verrouillé ? expiré ?).
+ex: net localgroup administrateurs ¦ Qui est admin local ?
+ex: net stop spooler && net start spooler ¦ Redémarrer le spouleur.
+
+@@ cmd hostname ¦ Système ¦ Affiche le nom de l’ordinateur. ¦ [HOST] [NAME]
+ex: hostname ¦ PC-IT-01
+see: `%COMPUTERNAME%`
+
+@@ cmd whoami ¦ Système ¦ Affiche le compte connecté, ses groupes, ses privilèges. ¦ « [WHO] [AM] [I] ? »
+syn: whoami [/upn] [/fqdn] [/user] [/groups] [/priv] [/all]
+/upn ¦ [U]ser [P]rincipal [N]ame ¦ Format courriel.
+/fqdn ¦ [F]ully [Q]ualified [D]omain [N]ame ¦ Nom distingué AD.
+/user ¦ [USER] ¦ Nom et SID.
+/groups ¦ [GROUPS] ¦ Groupes du jeton de session.
+/priv ¦ [PRIV]ileges ¦ Privilèges.
+/all ¦ [ALL] ¦ Tout.
+ex: whoami /groups | findstr /i compta ¦ Le groupe est-il dans ma session ?
+
+@@ cmd systeminfo ¦ Système ¦ Fiche complète du poste : OS, matériel, domaine, correctifs. ¦ [SYSTEM] [INFO]rmation
+syn: systeminfo [/s ordinateur] [/fo table|list|csv]
+/s ¦ [S]ystem ¦ Ordinateur distant.
+/fo ¦ [F]ormat [O]utput ¦ Format de sortie.
+ex: systeminfo | findstr /b /c:"Heure de démarrage" ¦ Depuis quand le PC tourne ?
+
+@@ cmd set ¦ Scripts batch ¦ Affiche, crée ou calcule des variables. ¦ [SET] : définir
+syn: set [variable=[valeur]] | set /a expression | set /p variable=invite
+/a ¦ [A]rithmetic ¦ Calcul entier : `set /a N+=1`.
+/p ¦ [P]rompt ¦ Demande une saisie à l’utilisateur.
+ex: set "DEST=D:\Backup" ¦ Forme sûre (pas d’espace parasite).
+ex: set L ¦ Variables commençant par L.
+note: Sous-chaînes : `%VAR:~0,4%` ; remplacement : `%VAR:ancien=nouveau%`.
+see: `setx`, `$env:`
+
+@@ cmd setx ¦ Scripts batch ¦ Crée une variable d’environnement permanente. ¦ [SET] e[X]tended
+syn: setx variable valeur [/m]
+/m ¦ [M]achine ¦ Variable système (pour tous), administrateur requis.
+ex: setx SITE "Nice" ¦ Visible dans les prochaines fenêtres seulement.
+note: Ne jamais l’utiliser pour rallonger PATH (troncature à 1024 caractères).
+
+@@ cmd tasklist ¦ Services & processus ¦ Liste les processus. ¦ [TASK] [LIST]
+syn: tasklist [/s ordinateur] [/svc] [/v] [/fi "filtre"] [/fo table|list|csv] [/nh] [/m dll]
+/s ¦ [S]ystem ¦ Ordinateur distant (RPC, sans WinRM).
+/u ¦ [U]ser ¦ Compte à utiliser pour /s.
+/svc ¦ [S]er[V]i[C]es ¦ Services hébergés par chaque processus.
+/v ¦ [V]erbose ¦ Détails (utilisateur, titre de fenêtre…).
+/fi ¦ [FI]lter ¦ Filtre : `"imagename eq x"`, `"pid eq n"`, `"status eq not responding"`, `"memusage gt 500000"`.
+/fo ¦ [F]ormat [O]utput ¦ `table`, `list`, `csv`.
+/nh ¦ [N]o [H]eader ¦ Sans en-tête.
+/m ¦ [M]odule ¦ Processus ayant chargé une DLL.
+ex: tasklist /fi "status eq not responding" ¦ Programmes figés.
+ex: tasklist /s PC-COMPTA-02 /fi "imagename eq outlook.exe" ¦ À distance.
+note: Opérateurs des filtres : `eq` égal, `ne` différent, `gt` / `lt` plus grand / plus petit, `ge` / `le` ou égal.
+see: `Get-Process`
+
+@@ cmd taskkill ¦ Services & processus ¦ Termine des processus. ¦ [TASK] [KILL]
+syn: taskkill [/s ordinateur] {/pid n | /im image} [/f] [/t] [/fi "filtre"]
+/pid ¦ [P]rocess [ID] ¦ Par numéro.
+/im ¦ [IM]age name ¦ Par nom d’exécutable (jokers acceptés).
+/f ¦ [F]orce ¦ Arrêt immédiat (données non enregistrées perdues).
+/t ¦ [T]ree ¦ Avec les processus enfants.
+/s ¦ [S]ystem ¦ Ordinateur distant.
+/fi ¦ [FI]lter ¦ Filtre comme tasklist.
+ex: taskkill /im outlook.exe /f ¦ Outlook figé.
+ex: taskkill /f /fi "status eq not responding" ¦ Tous les programmes figés.
+see: `Stop-Process`
+
+@@ cmd sc ¦ Services & processus ¦ Pilote les services, en local ou à distance. ¦ [S]ervice [C]ontrol
+syn: sc [\\ordinateur] query|queryex|qc|start|stop|config|failure|description service [option= valeur]
+sw: query ¦ [QUERY] ¦ État.
+sw: queryex ¦ [QUERY] [EX]tended ¦ État + PID.
+sw: qc ¦ [Q]uery [C]onfig ¦ Configuration : démarrage, exécutable, compte.
+sw: start / stop ¦ [START] / [STOP] ¦ Démarrer / arrêter (sans attendre).
+sw: config ¦ [CONFIG] ¦ Modifier : `start= auto|demand|disabled|delayed-auto`.
+sw: failure ¦ [FAILURE] ¦ Actions en cas de plantage.
+sw: \\PC ¦ ordinateur distant ¦ Juste après `sc` : passe par RPC, sans WinRM.
+ex: sc \\PC-COMPTA-02 query spooler ¦ État à distance.
+ex: sc config wuauserv start= demand ¦ Espace APRÈS le signe = obligatoire.
+note: Dans PowerShell, `sc` = Set-Content : taper `sc.exe`.
+see: `Get-Service`, `Set-Service`
+
+@@ cmd gpupdate ¦ Domaine & sécurité ¦ Réapplique les stratégies de groupe. ¦ [G]roup [P]olicy [UPDATE]
+syn: gpupdate [/target:computer|user] [/force] [/logoff] [/boot] [/wait:secondes]
+/target ¦ [TARGET] ¦ `computer` ou `user` seulement.
+/force ¦ [FORCE] ¦ Réapplique tout, pas seulement les changements.
+/logoff ¦ [LOGOFF] ¦ Ferme la session si nécessaire.
+/boot ¦ [BOOT] ¦ Redémarre si nécessaire.
+/wait ¦ [WAIT] ¦ Délai d’attente (0 = ne pas attendre).
+ex: gpupdate /force ¦ Classique après une modification de GPO.
+see: `Invoke-GPUpdate`
+
+@@ cmd gpresult ¦ Domaine & sécurité ¦ Affiche les stratégies réellement appliquées (RSoP). ¦ [G]roup [P]olicy [RESULT]
+syn: gpresult {/r | /v | /z | /h fichier.html [/f]} [/scope user|computer] [/s ordinateur] [/user compte]
+/r ¦ [R]ésumé ¦ Synthèse lisible.
+/v ¦ [V]erbose ¦ Détaillé.
+/z ¦ super-verbeux ¦ Tous les paramètres.
+/h ¦ [H]TML ¦ Rapport HTML.
+/f ¦ [F]orce ¦ Écrase le fichier existant.
+/scope ¦ [SCOPE] ¦ `user` ou `computer`.
+/s ¦ [S]ystem ¦ Ordinateur distant.
+/user ¦ [USER] ¦ Résultat pour un autre utilisateur.
+ex: gpresult /r /scope computer ¦ GPO ordinateur appliquées et filtrées.
+ex: gpresult /h C:\Temp\gpo.html /f ¦ Rapport à joindre au ticket.
+adm: Administrateur requis pour la partie ordinateur
+
+@@ cmd sfc ¦ Disque & réparation ¦ Vérifie et répare les fichiers système de Windows. ¦ [S]ystem [F]ile [C]hecker
+syn: sfc /scannow | sfc /verifyonly
+/scannow ¦ [SCAN] [NOW] ¦ Analyse et répare.
+/verifyonly ¦ [VERIFY] [ONLY] ¦ Analyse sans réparer.
+ex: sfc /scannow ¦ Après DISM /RestoreHealth.
+note: Journal : C:\Windows\Logs\CBS\CBS.log.
+adm: Administrateur requis
+
+@@ cmd dism ¦ Disque & réparation ¦ Répare et gère l’image Windows (magasin de composants). ¦ [D]eployment [I]mage [S]ervicing and [M]anagement
+syn: DISM /Online /Cleanup-Image {/CheckHealth | /ScanHealth | /RestoreHealth | /StartComponentCleanup}
+/Online ¦ [ONLINE] ¦ Sur le Windows en cours d’exécution.
+/Cleanup-Image ¦ [CLEANUP] [IMAGE] ¦ Opérations de nettoyage/réparation.
+/CheckHealth ¦ [CHECK] [HEALTH] ¦ Lecture rapide de l’état connu.
+/ScanHealth ¦ [SCAN] [HEALTH] ¦ Analyse complète.
+/RestoreHealth ¦ [RESTORE] [HEALTH] ¦ Analyse et répare (via Windows Update).
+/StartComponentCleanup ¦ [START] [COMPONENT] [CLEANUP] ¦ Libère l’espace des anciennes versions de composants.
+ex: DISM /Online /Cleanup-Image /RestoreHealth ¦ Avant sfc /scannow.
+adm: Administrateur requis
+
+@@ cmd chkdsk ¦ Disque & réparation ¦ Vérifie le système de fichiers d’un volume. ¦ [CH]ec[K] [DISK]
+syn: chkdsk [volume] [/f] [/r] [/x] [/scan]
+/f ¦ [F]ix ¦ Corrige les erreurs.
+/r ¦ [R]ecover ¦ Cherche les secteurs défectueux (implique /f, long).
+/x ¦ e[X]clusive ¦ Force le démontage du volume.
+/scan ¦ [SCAN] ¦ Analyse en ligne sans redémarrage.
+ex: chkdsk D: /f ¦ Réparer D:.
+note: Sur C:, la vérification est planifiée au prochain redémarrage.
+adm: Administrateur requis
+
+@@ cmd shutdown ¦ Sessions & distance ¦ Arrête, redémarre, ferme la session, en local ou à distance. ¦ [SHUT] [DOWN] : éteindre
+syn: shutdown {/s | /r | /l | /a | /h} [/m \\ordinateur] [/t secondes] [/c "message"] [/f] [/d p:x:y]
+/s ¦ [S]hutdown ¦ Arrêter.
+/r ¦ [R]estart ¦ Redémarrer.
+/l ¦ [L]ogoff ¦ Fermer la session.
+/a ¦ [A]bort ¦ Annuler un arrêt programmé.
+/h ¦ [H]ibernate ¦ Mettre en veille prolongée.
+/m ¦ [M]achine ¦ Ordinateur distant (RPC, sans WinRM).
+/t ¦ [T]ime ¦ Délai en secondes.
+/c ¦ [C]omment ¦ Message affiché.
+/f ¦ [F]orce ¦ Ferme les applications sans attendre.
+/g ¦ [G]o back ¦ Redémarre et relance les applications enregistrées.
+/fw ¦ [F]irm[W]are ¦ Redémarre vers le BIOS/UEFI.
+/d ¦ [D]ocumented reason ¦ Raison consignée (p = planifié, u = utilisateur).
+ex: shutdown /r /m \\PC-COMPTA-02 /t 900 /c "Redémarrage dans 15 min" ¦ Avec préavis.
+ex: shutdown /a /m \\PC-COMPTA-02 ¦ Annuler.
+see: `Restart-Computer`
+
+@@ cmd quser ¦ Sessions & distance ¦ Liste les sessions ouvertes. ¦ [Q]uery [USER]
+syn: quser [utilisateur | ID] [/server:ordinateur]
+/server ¦ [SERVER] ¦ Ordinateur interrogé.
+ex: quser /server:SRV-FICHIERS ¦ Qui est connecté avant un redémarrage ?
+note: Synonyme : `query user`.
+
+@@ cmd logoff ¦ Sessions & distance ¦ Ferme une session. ¦ [LOG] [OFF]
+syn: logoff [ID] [/server:ordinateur]
+/server ¦ [SERVER] ¦ Ordinateur distant.
+ex: logoff 3 /server:SRV-RDS01 ¦ Fermer la session n°3.
+
+@@ cmd msg ¦ Sessions & distance ¦ Envoie un message à une session. ¦ [M]e[S]sa[G]e
+syn: msg {utilisateur | ID | *} [/server:ordinateur] [/time:secondes] [/w] message
+/server ¦ [SERVER] ¦ Ordinateur distant.
+/time ¦ [TIME] ¦ Durée d’affichage.
+/w ¦ [W]ait ¦ Attend que l’utilisateur clique OK.
+ex: msg * /server:PC-COMPTA-02 "Redémarrage à 12h30" ¦ Toutes les sessions.
+
+@@ cmd mstsc ¦ Sessions & distance ¦ Client Bureau à distance. ¦ [M]icro[S]oft [T]erminal [S]ervices [C]lient
+syn: mstsc [/v:ordinateur] [/admin] [/f] [/shadow:ID [/control] [/noConsentPrompt]]
+/v ¦ ser[V]er ¦ Ordinateur cible.
+/admin ¦ [ADMIN] ¦ Session d’administration du serveur.
+/f ¦ [F]ull screen ¦ Plein écran.
+/shadow ¦ [SHADOW] : ombre ¦ Observer la session n° ID.
+/control ¦ [CONTROL] ¦ Prendre le contrôle (avec /shadow).
+/noConsentPrompt ¦ [NO] [CONSENT] [PROMPT] ¦ Sans demander l’accord (si autorisé par GPO).
+ex: mstsc /v:PC-COMPTA-02 /shadow:2 /control ¦ Aider l’utilisateur sur son écran.
+
+@@ cmd psexec ¦ Sessions & distance ¦ Exécute une commande sur un poste distant (Sysinternals). ¦ [P]rocess [S]tart [EXEC]
+syn: psexec \\ordinateur [-s] [-i] [-d] [-u compte] commande
+-s ¦ [S]ystem ¦ Exécute en tant que SYSTEM.
+-i ¦ [I]nteractive ¦ Sur le bureau de l’utilisateur.
+-d ¦ [D]on’t wait ¦ N’attend pas la fin.
+-u ¦ [U]ser ¦ Compte à utiliser.
+-accepteula ¦ [ACCEPT] [EULA] ¦ Accepte la licence sans fenêtre.
+ex: psexec \\PC-COMPTA-02 -s gpupdate /force ¦ Forcer les GPO à distance sans WinRM.
+note: Passe par ADMIN$ (SMB) et RPC. Surveillé par les antivirus : respecter la politique interne.
+adm: Administrateur du poste distant requis
+
+@@ cmd schtasks ¦ Système ¦ Crée et gère les tâches planifiées. ¦ [SCH]eduled [TASKS]
+syn: schtasks /create /tn nom /tr programme /sc fréquence [/st HH:mm] [/d jours] [/ru compte] [/rl highest]
+syn: schtasks /query | /run | /end | /change | /delete /tn nom [/f]
+/create ¦ [CREATE] ¦ Créer.
+/query ¦ [QUERY] ¦ Lister (`/fo list /v` pour le détail).
+/run ¦ [RUN] ¦ Lancer maintenant.
+/end ¦ [END] ¦ Arrêter.
+/delete ¦ [DELETE] ¦ Supprimer.
+/change ¦ [CHANGE] ¦ Modifier (`/enable`, `/disable`).
+/tn ¦ [T]ask [N]ame ¦ Nom de la tâche.
+/tr ¦ [T]ask [R]un ¦ Programme à lancer.
+/sc ¦ [SC]hedule ¦ `once`, `minute`, `hourly`, `daily`, `weekly`, `monthly`, `onstart`, `onlogon`, `onidle`.
+/mo ¦ [MO]difier ¦ Intervalle (toutes les N…).
+/d ¦ [D]ays ¦ Jours : `MON,TUE,WED,THU,FRI,SAT,SUN` ou numéro du mois.
+/st ¦ [S]tart [T]ime ¦ Heure de départ.
+/sd ¦ [S]tart [D]ate ¦ Date de départ.
+/ru ¦ [R]un as [U]ser ¦ Compte d’exécution (SYSTEM…).
+/rl ¦ [R]un [L]evel ¦ `highest` = élevé.
+/f ¦ [F]orce ¦ Sans confirmation / écrase.
+/s ¦ [S]ystem ¦ Ordinateur distant.
+ex: schtasks /create /tn "Sauvegarde Data" /tr "C:\Scripts\sauvegarde.bat" /sc daily /st 22:00 /ru SYSTEM /rl highest ¦ Sauvegarde nocturne.
+ex: schtasks /query /tn "Sauvegarde Data" /fo list /v ¦ Dernier résultat, prochaine exécution.
+see: `Get-ScheduledTask`
+
+@@ cmd reg ¦ Système ¦ Lit et modifie le Registre, en local ou à distance. ¦ [REG]istry
+syn: reg query|add|delete|export|import|copy|compare [\\ordinateur\]clé [/v valeur] [/t type] [/d donnée] [/f] [/s]
+sw: query ¦ [QUERY] ¦ Lire.
+sw: add ¦ [ADD] ¦ Créer ou modifier.
+sw: delete ¦ [DELETE] ¦ Supprimer une clé ou une valeur.
+sw: export / import ¦ [EXPORT] / [IMPORT] ¦ Sauvegarder / restaurer dans un .reg.
+/v ¦ [V]alue ¦ Nom de la valeur.
+/ve ¦ [V]alue [E]mpty ¦ Valeur par défaut.
+/t ¦ [T]ype ¦ `REG_SZ`, `REG_DWORD`, `REG_EXPAND_SZ`, `REG_MULTI_SZ`, `REG_QWORD`, `REG_BINARY`.
+/d ¦ [D]ata ¦ Donnée à écrire.
+/f ¦ [F]orce ¦ Sans confirmation (ou : /f texte = find avec query).
+/s ¦ [S]ubkeys ¦ Toutes les sous-clés.
+/y ¦ [Y]es ¦ Écrase le fichier d’export.
+ex: reg query HKCU\Software\Microsoft\Windows\CurrentVersion\Run ¦ Programmes au démarrage.
+ex: reg add "HKLM\SYSTEM\CurrentControlSet\Control\Terminal Server" /v fDenyTSConnections /t REG_DWORD /d 0 /f ¦ Autoriser le bureau à distance.
+ex: reg export HKCU\Software\Contoso C:\Temp\contoso.reg /y ¦ Sauvegarder avant modification.
+note: À distance : `reg query \\PC\HKLM\…` (service RemoteRegistry requis, seulement HKLM et HKU).
+
+@@ cmd klist ¦ Domaine & sécurité ¦ Affiche ou purge les tickets Kerberos. ¦ [K]erberos [LIST]
+syn: klist [purge] [tgt]
+sw: purge ¦ [PURGE] ¦ Supprime les tickets (redemandés au prochain accès).
+sw: tgt ¦ [T]icket-[G]ranting [T]icket ¦ Le ticket principal de la session.
+ex: klist purge ¦ Prendre en compte un nouveau groupe sur les partages.
+
+@@ cmd w32tm ¦ Domaine & sécurité ¦ Gère la synchronisation de l’heure. ¦ [W]indows [32] [T]i[M]e
+syn: w32tm /query /status | /query /source | /resync
+/query ¦ [QUERY] ¦ `/status` état, `/source` serveur de temps.
+/resync ¦ [RESYNC]hronize ¦ Resynchroniser maintenant.
+ex: w32tm /query /status ¦ Écart et dernière synchronisation.
+note: Kerberos tolère 5 minutes d’écart.
+
+@@ cmd nltest ¦ Domaine & sécurité ¦ Teste la relation du poste avec le domaine. ¦ [N]et[L]ogon [TEST]
+syn: nltest /dsgetdc:domaine | /sc_verify:domaine | /sc_reset:domaine | /dclist:domaine
+/dsgetdc ¦ [D]irectory [S]ervice [GET] [DC] ¦ Quel contrôleur le poste trouve.
+/sc_verify ¦ [S]ecure [C]hannel verify ¦ Vérifie le canal sécurisé.
+/sc_reset ¦ [S]ecure [C]hannel reset ¦ Le réinitialise.
+/dclist ¦ [DC] [LIST] ¦ Liste des contrôleurs.
+ex: nltest /sc_verify:contoso.local ¦ « Relation d’approbation » OK ?
+
+@@ cmd dsquery ¦ Domaine & sécurité ¦ Cherche des objets dans Active Directory (RSAT). ¦ [D]irectory [S]ervice [QUERY]
+syn: dsquery user|computer|group|ou [-name motif] [-inactive semaines] [-disabled] [-limit n]
+-name ¦ [NAME] ¦ Filtre par nom (jokers).
+-inactive ¦ [INACTIVE] ¦ Sans connexion depuis N semaines.
+-stalepwd ¦ [STALE] [P]ass[W]or[D] ¦ Mot de passe non changé depuis N jours.
+-disabled ¦ [DISABLED] ¦ Comptes désactivés.
+-limit ¦ [LIMIT] ¦ Nombre max de résultats (0 = illimité).
+ex: dsquery computer -inactive 8 ¦ Ordinateurs inactifs depuis 8 semaines.
+see: `Get-ADUser`, `Search-ADAccount`
+
+@@ cmd cmdkey ¦ Domaine & sécurité ¦ Gère les identifiants enregistrés de Windows. ¦ [C]o[M]man[D] [KEY]
+syn: cmdkey /list | /add:cible /user:compte /pass | /delete:cible
+/list ¦ [LIST] ¦ Affiche les identifiants enregistrés.
+/add ¦ [ADD] ¦ Ajoute.
+/delete ¦ [DELETE] ¦ Supprime.
+ex: cmdkey /list ¦ Cause fréquente de verrouillages répétés.
+ex: cmdkey /delete:SRV-FICHIERS ¦ Supprimer un identifiant obsolète.
+
+@@ cmd dcdiag ¦ Domaine & sécurité ¦ Diagnostique un contrôleur de domaine. ¦ [D]omain [C]ontroller [DIAG]nostic
+syn: dcdiag [/s:contrôleur] [/q] [/v] [/c] [/e] [/test:nom]
+/s ¦ [S]erver ¦ Contrôleur à tester.
+/q ¦ [Q]uiet ¦ Seulement les erreurs.
+/v ¦ [V]erbose ¦ Détaillé.
+/c ¦ [C]omprehensive ¦ Tous les tests.
+/e ¦ [E]nterprise ¦ Tous les DC de la forêt.
+/test ¦ [TEST] ¦ Un test précis : `dns`, `replications`, `services`…
+ex: dcdiag /s:SRV-AD01 /q ¦ Rien ne s’affiche = sain.
+
+@@ cmd repadmin ¦ Domaine & sécurité ¦ Surveille et force la réplication AD. ¦ [REP]lication [ADMIN]
+syn: repadmin /replsummary | /showrepl [DC] | /syncall [/AdeP]
+/replsummary ¦ [REPL]ication [SUMMARY] ¦ Synthèse des échecs et délais.
+/showrepl ¦ [SHOW] [REPL]ication ¦ Détail par partenaire.
+/syncall ¦ [SYNC] [ALL] ¦ Force la réplication (`/A` toutes partitions, `/d` noms DN, `/e` entreprise, `/P` push).
+ex: repadmin /replsummary ¦ Contrôle quotidien.
+
+@@ cmd netdom ¦ Domaine & sécurité ¦ Gère domaines, approbations et rôles FSMO. ¦ [NET] [DOM]ain
+syn: netdom query fsmo | netdom resetpwd /server:DC /userd:compte /passwordd:*
+sw: query fsmo ¦ [QUERY] [FSMO] ¦ Qui détient les 5 rôles FSMO.
+sw: resetpwd ¦ [RESET] [P]ass[W]or[D] ¦ Répare le mot de passe du compte ordinateur.
+ex: netdom query fsmo ¦ Avant une maintenance de DC.
+
+@@ cmd manage-bde ¦ Disque & réparation ¦ Gère le chiffrement BitLocker. ¦ [MANAGE] [B]itLocker [D]rive [E]ncryption
+syn: manage-bde -status [volume] | -protectors -get C: | -on C: | -off C:
+-status ¦ [STATUS] ¦ État du chiffrement.
+-protectors ¦ [PROTECTORS] ¦ Protecteurs (TPM, mot de passe de récupération…).
+ex: manage-bde -status C: ¦ Le disque est-il chiffré ?
+ex: manage-bde -protectors -get C: ¦ Identifiant et clé de récupération.
+adm: Administrateur requis
+
+@@ cmd powercfg ¦ Système ¦ Gère l’alimentation et produit des rapports. ¦ [POWER] [C]on[F]i[G]uration
+syn: powercfg /a | /batteryreport | /energy | /list | /setactive GUID
+/a ¦ [A]vailable sleep states ¦ États de veille disponibles.
+/batteryreport ¦ [BATTERY] [REPORT] ¦ Rapport HTML d’usure de la batterie.
+/energy ¦ [ENERGY] ¦ Diagnostic d’efficacité énergétique.
+/list ¦ [LIST] ¦ Modes d’alimentation.
+ex: powercfg /batteryreport ¦ Portable qui ne tient plus la charge ?
+
+@@ cmd driverquery ¦ Système ¦ Liste les pilotes installés. ¦ [DRIVER] [QUERY]
+syn: driverquery [/v] [/si] [/fo table|list|csv] [/s ordinateur]
+/v ¦ [V]erbose ¦ Détaillé.
+/si ¦ [S]igned [I]nfo ¦ Informations de signature.
+/fo ¦ [F]ormat [O]utput ¦ Format.
+ex: driverquery /fo csv > C:\Temp\pilotes.csv ¦ Export.
+
+@@ cmd if ¦ Scripts batch ¦ Exécute une commande sous condition. ¦ [IF] : si
+syn: if [not] exist chemin commande
+syn: if [/i] "texte1"=="texte2" commande
+syn: if %VAR% EQU|NEQ|LSS|LEQ|GTR|GEQ nombre commande
+syn: if [not] errorlevel n commande | if defined VAR commande
+/i ¦ [I]gnore case ¦ Comparaison insensible à la casse.
+sw: EQU ¦ [EQU]al ¦ Égal.
+sw: NEQ ¦ [N]ot [EQ]ual ¦ Différent.
+sw: LSS ¦ [L]e[SS] ¦ Inférieur.
+sw: LEQ ¦ [L]ess or [EQ]ual ¦ Inférieur ou égal.
+sw: GTR ¦ [G]rea[T]e[R] ¦ Supérieur.
+sw: GEQ ¦ [G]reater or [EQ]ual ¦ Supérieur ou égal.
+ex: if exist D:\Backup (echo OK) else (echo Absent) ¦ else sur la même ligne que la parenthèse.
+ex: if %ERRORLEVEL% GEQ 8 echo ECHEC ¦ Test d’un code robocopy.
+note: `if errorlevel 1` = ERRORLEVEL ≥ 1.
+
+@@ cmd for ¦ Scripts batch ¦ Boucle sur des fichiers, nombres, lignes ou sorties de commande. ¦ [FOR] : pour (chaque)
+syn: for %i in (ensemble) do commande
+syn: for /l %i in (début,pas,fin) do commande
+syn: for /f "options" %i in (fichier | 'commande' | "texte") do commande
+syn: for /d %i in (dossiers) do commande | for /r [chemin] %i in (motif) do commande
+/l ¦ [L]oop numérique ¦ Suite de nombres.
+/f ¦ [F]ile / [F]ields ¦ Lignes d’un fichier ou d’une commande, découpées : `tokens=`, `delims=`, `skip=`, `eol=`, `usebackq`.
+/d ¦ [D]irectories ¦ Dossiers.
+/r ¦ [R]ecursive ¦ Fichiers de tous les sous-dossiers.
+ex: for /l %i in (1,1,254) do @ping -n 1 -w 200 192.168.10.%i | find "TTL" ¦ Balayer un réseau.
+ex: for /f "skip=1 tokens=1,2 delims=;" %a in (C:\Data\nouveaux.csv) do @echo %b %a ¦ Lire un CSV.
+note: Dans un .bat : `%%i` au lieu de `%i`. Modificateurs : `%~ni` nom, `%~xi` extension, `%~zi` taille, `%~ti` date, `%~fi` chemin complet, `%~dpi` dossier.
+
+@@ cmd goto ¦ Scripts batch ¦ Saute à une étiquette. ¦ [GO] [TO]
+syn: goto :étiquette | goto :eof
+ex: if errorlevel 1 goto :erreur ¦ Gestion d’erreur.
+note: `:eof` (End Of File) termine le script ou le sous-programme.
+
+@@ cmd call ¦ Scripts batch ¦ Appelle un autre script ou un sous-programme, puis revient. ¦ [CALL] : appeler
+syn: call script.bat [arguments] | call :étiquette [arguments]
+ex: call :log "Début" ¦ Sous-programme avec argument (%~1).
+note: Sans `call`, un .bat lancé depuis un autre ne rend jamais la main.
+
+@@ cmd choice ¦ Scripts batch ¦ Demande à l’utilisateur d’appuyer sur une touche. ¦ [CHOICE] : choix
+syn: choice [/c touches] [/n] [/t secondes /d défaut] [/m "message"]
+/c ¦ [C]hoices ¦ Touches autorisées (défaut : ON).
+/n ¦ [N]o display ¦ N’affiche pas la liste des touches.
+/t ¦ [T]imeout ¦ Délai avant réponse par défaut.
+/d ¦ [D]efault ¦ Réponse par défaut.
+/m ¦ [M]essage ¦ Texte affiché.
+/cs ¦ [C]ase [S]ensitive ¦ Respecte la casse.
+ex: choice /c ONQ /m "Continuer" ¦ ERRORLEVEL = position de la touche (1, 2, 3).
+
+@@ cmd timeout ¦ Scripts batch ¦ Attend un nombre de secondes. ¦ [TIMEOUT] : délai
+syn: timeout /t secondes [/nobreak]
+/t ¦ [T]ime ¦ Secondes (-1 = indéfiniment).
+/nobreak ¦ [NO] [BREAK] ¦ Ignore les touches.
+ex: timeout /t 5 /nobreak > nul ¦ Pause silencieuse de 5 s.
+
+@@ cmd pushd ¦ Fichiers ¦ Mémorise le dossier courant et va ailleurs (même un partage). ¦ [PUSH] [D]irectory
+syn: pushd chemin | popd
+ex: pushd \\SRV-FICHIERS\Compta ¦ Mappe une lettre temporaire au partage UNC et y entre.
+ex: popd ¦ Revient au dossier mémorisé (et libère la lettre temporaire).
+note: `cd` refuse les chemins UNC ; `pushd` les accepte.
+
+@@ cmd start ¦ Système ¦ Lance un programme, un fichier ou une URL dans une nouvelle fenêtre. ¦ [START] : démarrer
+syn: start ["titre"] [/wait] [/min] [/max] [/d dossier] programme
+/wait ¦ [WAIT] ¦ Attend la fin du programme.
+/min ¦ [MIN]imized ¦ Fenêtre réduite.
+/d ¦ [D]irectory ¦ Dossier de démarrage.
+ex: start "" "C:\Temp\gpo.html" ¦ Ouvrir avec le programme associé. Le premier "" est le titre !
+ex: start /wait msiexec /i C:\Tools\app.msi /qn ¦ Installation silencieuse en attendant la fin.
+
+@@ cmd chcp ¦ Scripts batch ¦ Change la page de codes (encodage) de la console. ¦ [CH]ange [C]ode [P]age
+syn: chcp [numéro]
+ex: chcp 65001 > nul ¦ UTF-8 : accents corrects dans un script UTF-8.
+note: 850 = OEM Europe de l’Ouest (défaut), 1252 = Windows Latin-1.
+
+@@ cmd runas ¦ Domaine & sécurité ¦ Lance un programme sous un autre compte. ¦ [RUN] [AS] : exécuter en tant que
+syn: runas /user:domaine\compte [/netonly] programme
+/user ¦ [USER] ¦ Compte à utiliser.
+/netonly ¦ [NET]work [ONLY] ¦ Identifiants utilisés seulement pour l’accès réseau.
+ex: runas /user:CONTOSO\adm.it "mmc dsa.msc" ¦ Console AD avec un compte d’administration séparé.

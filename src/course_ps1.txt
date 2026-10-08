@@ -1,0 +1,773 @@
+=== ps ¦ PowerShell ¦ ps ¦ Des objets plutôt que du texte : cmdlets, pipeline, inventaire, journaux, registre et scripts .ps1.
+--- Premiers pas
+### LESSON p1 ¦ Verbe-Nom : la grammaire de PowerShell ¦ 1 ¦ Pourquoi toutes les commandes se ressemblent, et comment deviner celle qu’il te faut.
+>>> info ¦ Une commande = un verbe + un nom
+En PowerShell, les commandes s’appellent des **cmdlets** (prononce « commande-lettes » : de petites commandes). Elles suivent toutes le même modèle :
+```anatomy ps
+Get ¦ cmd ¦ Le **verbe** : l’action. Toujours au début, issu d’une liste officielle.
+- ¦ op ¦ Un trait d’union, sans espace.
+Service ¦ cmd ¦ Le **nom** : l’objet sur lequel on agit, toujours au **singulier**.
+```
+Donc : `Get-Service`, `Stop-Service`, `Start-Service`, `Restart-Service`… et `Get-Process`, `Stop-Process`, `Get-ADUser`, `Unlock-ADAccount`.
+!tip Si tu connais un verbe et un nom, tu connais déjà la commande. Un utilisateur à déverrouiller ? Verbe `Unlock`, nom `ADAccount`.
+>>> info ¦ Les verbes à connaître
+```table
+Verbe ¦ Sens ¦ Exemple
+`Get` ¦ lire, obtenir ¦ `Get-Process`
+`Set` ¦ modifier ¦ `Set-Service`
+`New` ¦ créer ¦ `New-Item`, `New-ADUser`
+`Remove` ¦ supprimer ¦ `Remove-Item`
+`Start` / `Stop` / `Restart` ¦ démarrer / arrêter / redémarrer ¦ `Restart-Service`
+`Add` / `Clear` ¦ ajouter / vider ¦ `Add-Content`, `Clear-RecycleBin`
+`Test` ¦ vérifier (renvoie Vrai/Faux) ¦ `Test-Path`, `Test-Connection`
+`Enable` / `Disable` ¦ activer / désactiver ¦ `Disable-ADAccount`
+`Import` / `Export` ¦ charger / enregistrer ¦ `Import-Csv`, `Export-Csv`
+`ConvertTo` / `ConvertFrom` ¦ changer de format ¦ `ConvertTo-Json`
+```
+`Get-Verb` les liste tous (une centaine).
+>>> qcm ¦ Quelle cmdlet redémarre un service ?
++ `Restart-Service`
+* `Reboot-Service`
+* `Service-Restart`
+* `Restart-Services`
+? Verbe approuvé `Restart`, puis nom **au singulier**. `Reboot` n’est pas un verbe approuvé.
+>>> type ps ¦ Affiche l’état du service Spooler.
+= Get-Service Spooler ;; Get-Service -Name Spooler ;; gsv Spooler ;; Get-Service spooler
+```out
+
+Status   Name               DisplayName
+------   ----               -----------
+Running  Spooler            Spouleur d’impression
+```
+>>> info ¦ La casse et la complétion
+- PowerShell **ignore la casse** : `get-service`, `GET-SERVICE` et `Get-Service` sont identiques. On écrit `Get-Service` par lisibilité.
+- La touche **Tab** complète les noms de cmdlets, de paramètres et de chemins : tape `Get-Ser` puis Tab.
+- Sur téléphone, le bouton **Tab** de la barre de symboles fait de même dans le terminal du site.
+>>> info ¦ Les alias : des raccourcis
+Un **alias** est un surnom. PowerShell en fournit pour les habitués de CMD et de Linux :
+```table
+Alias ¦ Cmdlet réelle
+`dir`, `ls`, `gci` ¦ `Get-ChildItem`
+`cd`, `sl` ¦ `Set-Location`
+`cls` ¦ `Clear-Host`
+`type`, `cat`, `gc` ¦ `Get-Content`
+`copy`, `cp` ¦ `Copy-Item`
+`del`, `rm` ¦ `Remove-Item`
+`ps`, `gps` ¦ `Get-Process`
+`gsv` ¦ `Get-Service`
+`?`, `where` ¦ `Where-Object`
+`%`, `foreach` ¦ `ForEach-Object`
+```
+!warn `dir` en PowerShell n’est **pas** le dir de CMD : `dir /s` échoue. C’est `Get-ChildItem -Recurse`. L’alias ne change que le nom, pas les paramètres.
+>>> type ps ¦ Découvre quelle cmdlet se cache derrière l’alias `gci`.
+= Get-Alias gci ;; Get-Alias -Name gci ;; gal gci
+```out
+
+CommandType     Name                                               Version    Source
+-----------     ----                                               -------    ------
+Alias           gci -> Get-ChildItem
+```
+? Bonne pratique : alias en console pour aller vite, noms complets dans les **scripts**, pour qu’ils restent lisibles par tes collègues.
+>>> qcm ¦ Pourquoi `dir /s` échoue-t-il dans PowerShell ?
++ `dir` est un alias de Get-ChildItem, qui ne connaît pas `/s` : il faut `-Recurse`
+* PowerShell ne sait pas lister les fichiers
+* Il faut être administrateur
+* `/s` doit s’écrire en majuscules
+? En PowerShell, les paramètres commencent par `-`. `/s` est pris pour un chemin.
+
+### LESSON p2 ¦ Paramètres : nommés, positionnels, commutateurs ¦ 1 ¦ -Name, -Path, -Recurse… et pourquoi tu peux parfois les omettre.
+>>> info ¦ Anatomie d’une commande avec paramètres
+```code ps
+Get-ChildItem -Path C:\Logs -Filter *.log -Recurse
+```
+```anatomy ps
+Get-ChildItem ¦ cmd ¦ La cmdlet : « obtenir les éléments enfants » (fichiers et dossiers).
+-Path ¦ param ¦ Un **paramètre** : un nom précédé d’un tiret…
+C:\Logs ¦ path ¦ …suivi de sa **valeur**.
+-Filter ¦ param ¦ Filtre appliqué par le système de fichiers (rapide).
+*.log ¦ val ¦ La valeur du filtre, avec joker.
+-Recurse ¦ sw ¦ Un **commutateur** (switch) : pas de valeur, sa seule présence l’active.
+```
+>>> info ¦ Trois sortes de paramètres
+```table
+Sorte ¦ Exemple ¦ Particularité
+Nommé ¦ `-Path C:\Logs` ¦ nom + valeur, dans n’importe quel ordre
+Positionnel ¦ `Get-ChildItem C:\Logs` ¦ le nom est **sous-entendu** selon la position
+Commutateur ¦ `-Recurse`, `-Force` ¦ vrai s’il est présent, faux sinon
+```
+`Get-ChildItem C:\Logs` fonctionne car `-Path` est le paramètre en **position 0**. `Get-Help Get-ChildItem -Parameter Path` l’indique (« Position ? 0 »).
+>>> qcm ¦ Ces deux commandes sont-elles équivalentes ? `Get-Service -Name Spooler` et `Get-Service Spooler`
++ Oui, -Name est le paramètre positionnel de Get-Service
+* Non, la seconde liste tous les services
+* Non, la seconde provoque une erreur
+* Oui, mais seulement en administrateur
+? `-Name` est en position 0 pour Get-Service.
+>>> info ¦ Abréger les noms de paramètres
+On peut taper le **début** d’un nom de paramètre tant qu’il n’est pas ambigu : `-Rec` pour `-Recurse`, `-Fi` pour `-Filter`… mais `-F` est ambigu (Filter, Force, File).
+!tip En console, abrège. Dans un script, écris le nom complet.
+>>> type ps ¦ Liste récursivement tous les fichiers .log sous C:\Logs.
+= Get-ChildItem -Path C:\Logs -Filter *.log -Recurse ;; Get-ChildItem C:\Logs -Filter *.log -Recurse ;; Get-ChildItem C:\Logs\*.log -Recurse ;; gci C:\Logs -Filter *.log -Recurse ;; dir C:\Logs -Filter *.log -Recurse ;; ls C:\Logs -Filter *.log -Recurse ;; Get-ChildItem C:\Logs -Recurse -Filter *.log ;; gci C:\Logs -Recurse -Filter *.log ;; Get-ChildItem -Path C:\Logs -Recurse -Filter *.log
+>>> info ¦ Les paramètres communs
+Toutes les cmdlets partagent des paramètres **communs** :
+```table
+Paramètre ¦ Rôle
+`-WhatIf` ¦ **simule** : affiche ce qui serait fait, sans rien faire
+`-Confirm` ¦ demande confirmation pour chaque élément
+`-Verbose` ¦ affiche le détail des opérations
+`-ErrorAction` ¦ que faire en cas d’erreur (`Stop`, `SilentlyContinue`, `Continue`…)
+`-OutVariable` ¦ range aussi le résultat dans une variable
+```
+!it Avant un `Remove-Item` ou un `Disable-ADAccount` sur plusieurs éléments, ajoute **toujours** `-WhatIf` au premier passage.
+>>> fill ps ¦ Vérifie ce que supprimerait la commande, sans rien supprimer.
+```code ps
+Remove-Item C:\Temp\*.tmp ___
+```
+= -WhatIf
+~ -Force ;; -Recurse ;; /s ;; -Test
+? `-WhatIf` affiche « WhatIf : Opération « Supprimer le fichier » en cours sur la cible … » pour chaque fichier, sans le supprimer.
+>>> qcm ¦ Quelle est la valeur d’un commutateur comme `-Recurse` ?
++ Il n’en a pas : sa présence suffit
+* Toujours `$true` à écrire après
+* Un nombre de niveaux
+* Un chemin
+? On peut écrire `-Recurse:$false` pour le désactiver explicitement, mais c’est rare.
+
+### LESSON p3 ¦ S’aider soi-même : Get-Help, Get-Command ¦ 1 ¦ Trouver la bonne commande et lire son aide, sans moteur de recherche.
+>>> info ¦ Trois commandes pour tout découvrir
+```table
+Commande ¦ Question à laquelle elle répond
+`Get-Command` ¦ « Quelle commande existe pour… ? »
+`Get-Help` ¦ « Comment s’utilise cette commande ? »
+`Get-Member` ¦ « Que contient ce résultat ? » (leçon suivante)
+```
+>>> info ¦ Get-Command avec des jokers
+```code ps
+Get-Command *firewall*
+Get-Command -Verb Get -Noun *Disk*
+Get-Command -Module ActiveDirectory
+```
+- `-Verb` / `-Noun` filtrent sur les deux moitiés du nom.
+- `-Module` liste les commandes d’un module.
+!tip Tu cherches comment gérer les imprimantes ? `Get-Command *print*` te donne `Get-Printer`, `Get-PrintJob`, `Remove-PrintJob`…
+>>> type ps ¦ Trouve toutes les commandes dont le nom contient « print ».
+= Get-Command *print* ;; Get-Command *Print* ;; gcm *print* ;; Get-Command -Name *print* ;; Get-Command -Noun *print*
+>>> info ¦ Lire l’aide
+```table
+Commande ¦ Ce qu’elle montre
+`Get-Help Get-Service` ¦ résumé et syntaxe
+`Get-Help Get-Service -Examples` ¦ seulement les **exemples** (le plus utile !)
+`Get-Help Get-Service -Full` ¦ tout, y compris chaque paramètre
+`Get-Help Get-Service -Online` ¦ la page web Microsoft à jour
+`Get-Help about_*` ¦ les articles de fond (`about_Operators`, `about_Quoting_Rules`…)
+`Update-Help` ¦ télécharge l’aide complète (une fois, en administrateur)
+```
+>>> type ps ¦ Affiche uniquement les exemples de l’aide de Get-Process.
+= Get-Help Get-Process -Examples ;; help Get-Process -Examples ;; Get-Help -Name Get-Process -Examples ;; man Get-Process -Examples ;; Get-Process -?
+? `-?` derrière une cmdlet affiche aussi un résumé de son aide.
+>>> info ¦ Lire une syntaxe
+```code ps
+Get-Service [[-Name] <string[]>] [-ComputerName <string[]>] [-DependentServices] [-Exclude <string[]>]
+```
+```table
+Notation ¦ Signification
+`[ … ]` autour du tout ¦ paramètre **facultatif**
+`[-Name]` ¦ le **nom** du paramètre est facultatif : il est positionnel
+`<string>` ¦ type de la valeur attendue : du texte
+`<string[]>` ¦ les `[]` : plusieurs valeurs possibles, séparées par des virgules
+pas de `<…>` ¦ commutateur
+```
+>>> qcm ¦ Dans la syntaxe, que signifie `<string[]>` après `-Name` ?
++ On peut passer un ou plusieurs textes, séparés par des virgules
+* Le paramètre est obligatoire
+* Le texte doit être entre crochets
+* Le paramètre n’accepte pas de joker
+? Exemple : `Get-Service -Name Spooler, wuauserv, BITS`.
+>>> type ps ¦ Affiche l’état des services Spooler et wuauserv en une seule commande.
+= Get-Service Spooler, wuauserv ;; Get-Service -Name Spooler, wuauserv ;; Get-Service Spooler,wuauserv ;; Get-Service -Name Spooler,wuauserv ;; Get-Service wuauserv, Spooler ;; Get-Service -Name wuauserv, Spooler ;; gsv Spooler, wuauserv
+
+### LESSON p4 ¦ Tout est objet : Get-Member ¦ 2 ¦ La différence fondamentale avec CMD : des objets avec des propriétés et des méthodes.
+>>> info ¦ Texte contre objets
+En CMD, `tasklist` produit du **texte** : pour extraire une colonne, il faut découper des lignes.
+
+En PowerShell, `Get-Process` produit des **objets** : chaque processus est une fiche avec des **propriétés** nommées (`Name`, `Id`, `CPU`, `WorkingSet`…). Le tableau affiché n’est qu’une **vue** de ces fiches.
+```table
+Notion ¦ Analogie ¦ Exemple
+Objet ¦ une fiche ¦ le processus Outlook
+Propriété ¦ un champ de la fiche ¦ `Id` = 7344
+Méthode ¦ une action que la fiche sait faire ¦ `Kill()`
+Type ¦ le modèle de fiche ¦ `System.Diagnostics.Process`
+```
+>>> info ¦ Get-Member : l’inventaire d’un objet
+```code ps
+Get-Service Spooler | Get-Member
+```
+```out
+
+   TypeName : System.ServiceProcess.ServiceController
+
+Name                MemberType Definition
+----                ---------- ----------
+Stop                Method     void Stop()
+Start               Method     void Start(), void Start(string[] args)
+DisplayName         Property   string DisplayName {get;}
+Status              Property   System.ServiceProcess.ServiceControllerStatus Status {get;}
+StartType           Property   System.ServiceProcess.ServiceStartMode StartType {get;}
+```
+- **TypeName** : le type d’objet.
+- **Property** : une donnée lisible (`{get;}`) et parfois modifiable (`{get;set;}`).
+- **Method** : une action, appelée avec des parenthèses.
+>>> type ps ¦ Affiche seulement les propriétés des objets renvoyés par Get-Process.
+= Get-Process | Get-Member -MemberType Property ;; Get-Process | gm -MemberType Property ;; gps | gm -MemberType Property ;; Get-Process | Get-Member -MemberType Properties ;; Get-Process | gm -MemberType Properties ;; Get-Process | Get-Member -Type Property
+>>> info ¦ Lire une propriété avec le point
+Entre parenthèses, une commande devient un objet dont on peut lire une propriété avec un **point** :
+```code ps
+(Get-Service Spooler).Status
+(Get-Date).DayOfWeek
+(Get-ChildItem C:\Logs).Count
+```
+```out
+Running
+Thursday
+4
+```
+>>> fill ps ¦ Affiche seulement le nom d’affichage du service wuauserv.
+```code ps
+(Get-Service wuauserv)___
+```
+= .DisplayName
+~ -DisplayName ;; [DisplayName] ;; .Name
+? Les parenthèses exécutent d’abord la commande, le point accède à la propriété.
+>>> info ¦ Ce que l’écran ne montre pas
+Le tableau par défaut ne montre que **quelques** propriétés choisies par Microsoft. Pour tout voir :
+```code ps
+Get-Service Spooler | Select-Object *
+Get-Service Spooler | Format-List *
+```
+!it Un collègue dit « Get-Service n’affiche pas le type de démarrage ». Si : la propriété `StartType` existe, elle n’est juste pas dans la vue par défaut. `Get-Service | Select-Object Name, Status, StartType`.
+>>> qcm ¦ Pourquoi peut-on trier les processus par mémoire sans découper de texte ?
++ Parce que chaque processus est un objet avec une propriété numérique WorkingSet
+* Parce que PowerShell lit la colonne WS(K) à l’écran
+* Parce que Sort-Object devine les colonnes
+* On ne peut pas
+? Sort-Object travaille sur la vraie propriété (un nombre), pas sur le texte affiché.
+
+### LESSON p5 ¦ Le pipeline et $_ ¦ 2 ¦ Passer des objets d’une commande à l’autre, et désigner « l’objet en cours ».
+>>> info ¦ Le pipe transporte des objets
+Comme en CMD, `|` relie deux commandes. Mais ici, ce sont des **objets entiers** qui passent, un par un :
+```code ps
+Get-Service wuauserv | Stop-Service
+```
+Stop-Service reçoit l’**objet service** et sait quoi en faire : pas besoin de recopier le nom.
+```code ps
+Get-Process | Sort-Object WorkingSet -Descending | Select-Object -First 5 Name, Id
+```
+```anatomy ps
+Get-Process ¦ cmd ¦ Produit un objet par processus.
+| ¦ op ¦ Passe chaque objet à la commande suivante.
+Sort-Object WorkingSet -Descending ¦ cmd ¦ Trie selon la mémoire utilisée, du plus grand au plus petit.
+| ¦ op ¦ Passe les objets triés.
+Select-Object -First 5 Name, Id ¦ cmd ¦ Garde les 5 premiers, et seulement deux propriétés.
+```
+>>> order ps ¦ Construis : les 3 processus qui consomment le plus de processeur.
+~ Get-Process ;; | ;; Sort-Object CPU -Descending ;; | ;; Select-Object -First 3
+x~ Where-Object ;; Format-Table
+? Ordre logique : produire → trier → couper. Couper avant de trier donnerait 3 processus au hasard.
+>>> info ¦ $_ : l’objet en cours
+Dans un bloc `{ }` du pipeline, **`$_`** désigne l’objet qui est en train de passer (on peut aussi écrire `$PSItem`).
+```code ps
+Get-Service | Where-Object { $_.Status -eq 'Stopped' }
+```
+```anatomy ps
+Where-Object ¦ cmd ¦ Filtre : ne laisse passer que les objets pour lesquels le bloc est vrai.
+{ … } ¦ sb ¦ Un **bloc de script** : du code exécuté pour chaque objet.
+$_ ¦ var ¦ L’objet en cours (ici : un service).
+.Status ¦ param ¦ Sa propriété Status.
+-eq ¦ op ¦ **eq**ual : opérateur d’égalité.
+'Stopped' ¦ str ¦ La valeur comparée.
+```
+>>> fill ps ¦ Garde uniquement les fichiers de plus de 1 000 octets.
+```code ps
+Get-ChildItem C:\Logs | Where-Object { ___.Length -gt 1000 }
+```
+= $_
+~ $ ;; $this ;; %_ ;; @_
+? `$_` = l’élément en cours. `-gt` = **g**reater **t**han.
+>>> info ¦ Pourquoi pas = ou > ?
+En PowerShell, `=` **affecte** une valeur et `>` **redirige** vers un fichier (comme en CMD). Les comparaisons utilisent donc des opérateurs à tiret :
+```table
+Opérateur ¦ Signification ¦ Mnémonique
+`-eq` / `-ne` ¦ égal / différent ¦ **eq**ual / **n**ot **e**qual
+`-gt` / `-ge` ¦ supérieur / supérieur ou égal ¦ **g**reater **t**han / **g**reater or **e**qual
+`-lt` / `-le` ¦ inférieur / inférieur ou égal ¦ **l**ess **t**han / **l**ess or **e**qual
+`-like` ¦ correspond au joker ¦ `'PC-RH-01' -like 'PC-RH*'`
+`-match` ¦ correspond à l’expression régulière ¦ `'PC-RH-01' -match '^PC-\w+-\d+$'`
+`-contains` ¦ la liste contient ¦ `@('a','b') -contains 'a'`
+`-in` ¦ est dans la liste ¦ `'a' -in @('a','b')`
+```
+Toutes ignorent la casse ; les versions `-ceq`, `-clike`… (**c**ase-sensitive) la respectent.
+>>> qcm ¦ Que fait `Get-Service | Where-Object { $_.Status = 'Running' }` ?
++ C’est une erreur de logique : `=` affecte au lieu de comparer
+* Elle liste les services démarrés
+* Elle démarre tous les services
+* Elle liste les services arrêtés
+? Il faut `-eq`. Avec `=`, PowerShell tente une affectation (et échoue ici, Status étant en lecture seule).
+>>> type ps ¦ Liste les services arrêtés dont le type de démarrage est automatique (ceux qui auraient dû démarrer).
+= Get-Service | Where-Object { $_.Status -eq 'Stopped' -and $_.StartType -eq 'Automatic' } ;; Get-Service | Where-Object { $_.StartType -eq 'Automatic' -and $_.Status -eq 'Stopped' } ;; Get-Service | ? { $_.Status -eq 'Stopped' -and $_.StartType -eq 'Automatic' } ;; gsv | ? { $_.Status -eq 'Stopped' -and $_.StartType -eq 'Automatic' } ;; Get-Service | where { $_.Status -eq 'Stopped' -and $_.StartType -eq 'Automatic' }
+hint: Deux conditions reliées par `-and` dans le même bloc `{ }`.
+? `-and` (et), `-or` (ou), `-not` ou `!` (non). Un service automatique arrêté est souvent le symptôme d’une panne.
+
+--- Le pipeline
+### LESSON p6 ¦ Filtrer : Where-Object et -Filter ¦ 2 ¦ Les deux syntaxes de Where-Object, et pourquoi filtrer « à gauche ».
+>>> info ¦ Deux écritures de Where-Object
+```table
+Syntaxe ¦ Exemple ¦ Quand l’utiliser
+Bloc de script ¦ `Where-Object { $_.CPU -gt 100 }` ¦ toujours possible, conditions multiples
+Simplifiée ¦ `Where-Object CPU -gt 100` ¦ une seule condition, plus lisible
+```
+Les deux font la même chose. La forme simplifiée existe depuis PowerShell 3.
+>>> type ps ¦ Avec la syntaxe simplifiée, liste les processus dont le nom commence par « ms ».
+= Get-Process | Where-Object Name -like 'ms*' ;; Get-Process | Where-Object Name -like "ms*" ;; Get-Process | where Name -like ms* ;; Get-Process | Where-Object Name -like ms* ;; gps | ? Name -like 'ms*' ;; Get-Process | ? Name -like 'ms*' ;; Get-Process | where Name -like 'ms*'
+>>> info ¦ Filtrer à gauche
+**Règle d’or** : filtre le plus tôt possible, idéalement **dans** la première commande, avec ses propres paramètres.
+```code ps
+# Lent : récupère TOUS les fichiers du disque, puis trie
+Get-ChildItem C:\ -Recurse | Where-Object Extension -eq '.pst'
+
+# Rapide : le système de fichiers ne renvoie que les .pst
+Get-ChildItem C:\ -Recurse -Filter *.pst
+```
+!it Avec Active Directory, c’est encore plus vrai : `Get-ADUser -Filter *  | Where-Object …` rapatrie tout l’annuaire par le réseau, alors que `Get-ADUser -Filter "Department -eq 'RH'"` demande au contrôleur de faire le tri.
+>>> qcm ¦ Pourquoi `Get-ChildItem -Filter *.pst` est-il plus rapide que `Get-ChildItem | Where-Object Extension -eq '.pst'` ?
++ Le filtrage est fait à la source : seuls les .pst sont transformés en objets
+* Where-Object ne fonctionne pas sur les fichiers
+* -Filter utilise plusieurs processeurs
+* Ils ont la même vitesse
+? Le paramètre `-Filter` est transmis au fournisseur (système de fichiers, AD…) qui ne renvoie que les correspondances.
+>>> info ¦ -like et -match
+- `-like` utilise des **jokers** : `*` (n’importe quoi), `?` (un caractère), `[a-c]` (plage).
+- `-match` utilise une **expression régulière** (regex), bien plus puissante.
+```code ps
+Get-ADComputer -Filter * | Where-Object Name -match '^PC-(COMPTA|RH)-\d{2}$'
+```
+```table
+Regex ¦ Signification
+`^` / `$` ¦ début / fin du texte
+`\d` ¦ un chiffre (**d**igit) ; `\d{2}` = deux chiffres
+`\w` ¦ une lettre, un chiffre ou _ (**w**ord)
+`(A|B)` ¦ A **ou** B
+`.` ¦ n’importe quel caractère (`\.` pour un vrai point)
+```
+>>> fill ps ¦ Garde les postes dont le nom commence par « LAP- » (ordinateurs portables).
+```code ps
+Get-ADComputer -Filter * | Where-Object Name ___ 'LAP-*'
+```
+= -like
+~ -match ;; -eq ;; -contains ;; =
+? Avec un joker `*`, c’est `-like`. Avec `-match`, il faudrait `'^LAP-'`.
+>>> qcm ¦ Que renvoie `'SRV-AD01' -match 'AD'` ?
++ `True` : le texte contient « AD » quelque part
+* `False` : il faut que tout le texte corresponde
+* Une erreur
+* `AD`
+? `-match` cherche **n’importe où** dans le texte, sauf si tu ancres avec `^` et `$`.
+
+### LESSON p7 ¦ Choisir et trier : Select-Object et Sort-Object ¦ 2 ¦ Garder les bonnes colonnes, créer des colonnes calculées, trier sur plusieurs critères.
+>>> info ¦ Select-Object : les colonnes et le nombre
+```table
+Usage ¦ Exemple
+choisir des propriétés ¦ `Select-Object Name, Status, StartType`
+les N premiers / derniers ¦ `Select-Object -First 5` / `-Last 5`
+sans doublons ¦ `Select-Object -Unique`
+**extraire** une valeur seule ¦ `Select-Object -ExpandProperty Name`
+toutes les propriétés ¦ `Select-Object *`
+```
+>>> qcm ¦ Quelle différence entre `Select-Object Name` et `Select-Object -ExpandProperty Name` ?
++ Le premier renvoie des objets avec une propriété Name ; le second renvoie directement les textes
+* Aucune
+* Le second trie par nom
+* Le premier ne fonctionne qu’avec Get-Service
+? `-ExpandProperty` « déballe » la valeur. Indispensable pour passer une simple liste de noms à une autre commande ou l’écrire dans un fichier texte.
+>>> info ¦ Les propriétés calculées
+On peut **créer** une colonne avec une table de hachage `@{ Name = '…'; Expression = { … } }` :
+```code ps
+Get-ChildItem C:\Logs | Select-Object Name, @{Name='Taille (Ko)'; Expression={ [math]::Round($_.Length / 1KB, 1) }}
+```
+```anatomy ps
+@{ … } ¦ sb ¦ Une **table de hachage** décrivant la nouvelle colonne.
+Name='Taille (Ko)' ¦ param ¦ Le titre de la colonne (abrégeable en `N` ou `Label`/`L`).
+Expression={ … } ¦ param ¦ Le calcul, refait pour chaque objet (abrégeable en `E`).
+[math]::Round( … , 1) ¦ cmd ¦ Arrondi à 1 décimale, avec la classe .NET Math.
+$_.Length / 1KB ¦ op ¦ Taille en octets divisée par 1 024. PowerShell comprend `KB`, `MB`, `GB`, `TB`.
+```
+```out
+
+Name                  Taille (Ko)
+----                  -----------
+app.log                       0,4
+backup_2026-10-06.log         0,9
+backup_2026-10-07.log         1,2
+install.log                   0,1
+```
+>>> fill ps ¦ Affiche les processus avec leur mémoire en Mo.
+```code ps
+Get-Process | Select-Object Name, @{N='Mo'; E={ $_.WorkingSet / ___ }}
+```
+= 1MB
+~ 1000 ;; 1KB ;; MB ;; 1024
+? `1MB` vaut 1 048 576. `1024` donnerait des Ko.
+>>> info ¦ Sort-Object
+```code ps
+Get-ChildItem C:\Logs | Sort-Object Length -Descending
+Get-Service | Sort-Object Status, DisplayName
+Get-ADUser -Filter * -Properties LastLogonDate | Sort-Object LastLogonDate
+```
+- Tri croissant par défaut ; `-Descending` pour décroissant.
+- Plusieurs propriétés : tri par la première, puis la seconde en cas d’égalité.
+- `-Unique` : supprime les doublons après tri.
+>>> type ps ¦ Liste les fichiers de C:\Logs du plus récent au plus ancien (date de modification).
+= Get-ChildItem C:\Logs | Sort-Object LastWriteTime -Descending ;; gci C:\Logs | Sort-Object LastWriteTime -Descending ;; dir C:\Logs | sort LastWriteTime -Descending ;; Get-ChildItem C:\Logs | sort LastWriteTime -Descending ;; gci C:\Logs | sort LastWriteTime -Descending ;; ls C:\Logs | sort LastWriteTime -Descending
+hint: La propriété de date de modification s’appelle `LastWriteTime`.
+>>> order ps ¦ Construis : le nom des 5 plus gros fichiers de C:\Data, sous-dossiers compris.
+~ Get-ChildItem C:\Data -Recurse -File ;; | ;; Sort-Object Length -Descending ;; | ;; Select-Object -First 5 Name, Length
+x~ Where-Object ;; -Directory
+? `-File` exclut les dossiers (qui n’ont pas de taille).
+
+### LESSON p8 ¦ Compter et regrouper : Measure-Object, Group-Object ¦ 2 ¦ Combien, quel total, quelle moyenne, et combien par catégorie.
+>>> info ¦ Measure-Object
+```code ps
+Get-ChildItem C:\Logs | Measure-Object Length -Sum -Average -Maximum
+```
+```out
+
+Count    : 4
+Average  : 681,75
+Sum      : 2727
+Maximum  : 1240
+Minimum  :
+Property : Length
+```
+- Sans paramètre : compte seulement (`Count`).
+- `-Sum`, `-Average`, `-Maximum`, `-Minimum` : calculs sur la propriété indiquée.
+- Pour du texte : `-Line`, `-Word`, `-Character`.
+!tip Les décimales s’affichent avec une **virgule** sur un Windows français, mais dans ton code tu écris toujours un **point** : `1.5`.
+>>> type ps ¦ Compte le nombre de services en cours d’exécution.
+= Get-Service | Where-Object Status -eq Running | Measure-Object ;; Get-Service | Where-Object Status -eq 'Running' | Measure-Object ;; Get-Service | Where-Object { $_.Status -eq 'Running' } | Measure-Object ;; (Get-Service | Where-Object Status -eq Running).Count ;; (Get-Service | Where-Object Status -eq 'Running').Count ;; Get-Service | ? Status -eq Running | measure
+>>> info ¦ Group-Object
+```code ps
+Get-ADUser -Filter * -Properties Department | Group-Object Department | Sort-Object Count -Descending
+```
+```out
+
+Count Name                Group
+----- ----                -----
+    2 Comptabilité        {CN=Jean Dupont,OU=Comptabilite,OU=Utilisateurs,DC=contoso,DC=local, CN=Julie Robert,…}
+    2 Réception           {CN=Karim Benali,OU=Reception,OU=Utilisateurs,DC=contoso,DC=local, CN=Camille Moreau,…}
+    2 Restauration        {CN=Nicolas Girard,OU=Restauration,OU=Utilisateurs,DC=contoso,DC=local, CN=Antoine…}
+```
+- **Count** : nombre d’objets dans le groupe ; **Name** : la valeur commune ; **Group** : les objets eux-mêmes.
+- `-NoElement` : supprime la colonne Group (plus lisible).
+!it « Combien de postes par modèle ? », « Combien d’utilisateurs par service ? », « Quels événements reviennent le plus ? » : Group-Object répond en une ligne.
+>>> fill ps ¦ Compte les services par état (combien Running, combien Stopped), sans la colonne Group.
+```code ps
+Get-Service | ___ Status ___
+```
+= Group-Object ;; -NoElement
+~ Measure-Object ;; Sort-Object ;; -Count ;; -Unique
+? Group-Object regroupe par valeur de Status ; `-NoElement` retire la colonne Group, illisible ici.
+>>> qcm ¦ Tu veux la taille totale des fichiers d’un dossier. Quelle commande ?
++ `Get-ChildItem C:\Data -Recurse -File | Measure-Object Length -Sum`
+* `Get-ChildItem C:\Data | Group-Object Length`
+* `Get-ChildItem C:\Data | Sort-Object Length -Sum`
+* `(Get-ChildItem C:\Data).Size`
+? Measure-Object calcule ; Group-Object regroupe. La propriété de taille d’un fichier est `Length`.
+>>> type ps ¦ Calcule la taille totale (en octets) des fichiers de C:\Logs, et affiche seulement ce nombre.
+= (Get-ChildItem C:\Logs | Measure-Object Length -Sum).Sum ;; (Get-ChildItem C:\Logs | Measure-Object -Property Length -Sum).Sum ;; (gci C:\Logs | Measure-Object Length -Sum).Sum ;; (dir C:\Logs | measure Length -Sum).Sum ;; Get-ChildItem C:\Logs | Measure-Object Length -Sum | Select-Object -ExpandProperty Sum
+```out
+2727
+```
+
+### LESSON p9 ¦ Afficher et exporter : Format-*, Export-Csv, ConvertTo-* ¦ 2 ¦ Mettre en forme pour l’écran, enregistrer pour Excel, et l’erreur qui piège tout le monde.
+>>> info ¦ Format-Table, Format-List
+```table
+Cmdlet ¦ Alias ¦ Effet
+`Format-Table` ¦ `ft` ¦ tableau ; `-AutoSize` ajuste les colonnes
+`Format-List` ¦ `fl` ¦ une propriété par ligne ; `fl *` = tout voir
+`Format-Wide` ¦ `fw` ¦ une seule propriété, sur plusieurs colonnes
+```
+```code ps
+Get-Service Spooler | Format-List Name, Status, StartType, DependentServices
+```
+>>> info ¦ La règle : Format-* toujours en dernier
+`Format-*` transforme les objets en **instructions d’affichage**. Après lui, il n’y a plus de vrais objets :
+```code ps
+Get-Service | Format-Table Name, Status | Export-Csv C:\Temp\services.csv
+```
+Le CSV obtenu contient des lignes incompréhensibles (`ClassId2e4f51ef21dd47e99d3c952918aff9cd`…).
+!warn « **Filtre à gauche, formate à droite** » : Format-* est **toujours la dernière** commande d’un pipeline, et jamais avant Export, Sort, Where…
+>>> qcm ¦ Quel pipeline produit un CSV correct ?
++ `Get-Service | Select-Object Name, Status | Export-Csv C:\Temp\s.csv -NoTypeInformation`
+* `Get-Service | Format-Table Name, Status | Export-Csv C:\Temp\s.csv`
+* `Get-Service | Format-List | Out-File C:\Temp\s.csv`
+* `Get-Service > C:\Temp\s.csv`
+? Pour choisir des colonnes avant un export : `Select-Object`, pas `Format-Table`.
+>>> info ¦ Export-Csv pour Excel
+```code ps
+Get-ADUser -Filter * -Properties Department, LastLogonDate |
+    Select-Object Name, SamAccountName, Department, LastLogonDate |
+    Export-Csv C:\Temp\utilisateurs.csv -NoTypeInformation -Delimiter ';' -Encoding UTF8
+```
+```anatomy ps
+Export-Csv ¦ cmd ¦ Écrit les objets dans un fichier CSV, une ligne par objet.
+-NoTypeInformation ¦ sw ¦ Supprime la 1re ligne `#TYPE …` que PowerShell 5.1 ajoute par défaut (inutile dans Excel).
+-Delimiter ';' ¦ param ¦ Excel en français attend le **point-virgule** comme séparateur.
+-Encoding UTF8 ¦ param ¦ Garde les accents (Lefèvre, Réception).
+```
+!tip `-UseCulture` remplace `-Delimiter ';'` : il prend le séparateur des paramètres régionaux du poste.
+>>> fill ps ¦ Exporte les fichiers de C:\Logs pour Excel français, sans la ligne #TYPE.
+```code ps
+Get-ChildItem C:\Logs | Select-Object Name, Length, LastWriteTime | Export-Csv C:\Temp\logs.csv ___ -Delimiter ___
+```
+= -NoTypeInformation ;; ';'
+~ -NoHeader ;; ',' ;; -Force ;; -Append
+? Sans `-NoTypeInformation`, la 1re ligne serait `#TYPE …` ; sans `;`, Excel français mettrait tout dans la colonne A.
+>>> info ¦ Les autres sorties
+```table
+Cmdlet ¦ Usage
+`Out-File C:\Temp\x.txt` ¦ le texte **tel qu’affiché** dans un fichier (comme `>`)
+`Out-GridView` ¦ fenêtre avec tri et filtre (pas sur Server Core)
+`ConvertTo-Json` ¦ format JSON (API web, configuration)
+`ConvertTo-Html` ¦ page HTML (rapport par mail)
+`Import-Csv` ¦ l’inverse d’Export-Csv : relit un CSV en objets
+`Set-Clipboard` ¦ copie dans le presse-papiers, à coller dans un ticket
+```
+>>> type ps ¦ Relis le fichier C:\Data\nouveaux.csv (séparé par des points-virgules) sous forme d’objets.
+= Import-Csv C:\Data\nouveaux.csv -Delimiter ';' ;; Import-Csv C:\Data\nouveaux.csv -Delimiter ";" ;; Import-Csv -Path C:\Data\nouveaux.csv -Delimiter ';' ;; Import-Csv C:\Data\nouveaux.csv -UseCulture ;; ipcsv C:\Data\nouveaux.csv -Delimiter ';'
+```out
+
+Prenom  : Léa
+Nom     : Durand
+Service : Réception
+Poste   : Réceptionniste
+Debut   : 12/10/2026
+
+Prenom  : Maxime
+Nom     : Faure
+...
+```
+? Sans `-Delimiter ';'`, PowerShell attend des virgules et met toute la ligne dans une seule propriété « Prenom;Nom;Service;… ».
+
+--- Administrer un poste
+### LESSON p10 ¦ Fichiers et dossiers ¦ 2 ¦ Créer, copier, déplacer, supprimer et lire, avec les équivalents PowerShell de CMD.
+>>> info ¦ Les cmdlets *-Item
+```table
+CMD ¦ PowerShell ¦ Alias PS
+`dir` ¦ `Get-ChildItem` ¦ dir, ls, gci
+`cd` ¦ `Set-Location` ¦ cd, sl
+`md` ¦ `New-Item -ItemType Directory` ¦ md, mkdir
+`copy` / `xcopy` ¦ `Copy-Item` ¦ copy, cp
+`move` ¦ `Move-Item` ¦ move, mv
+`ren` ¦ `Rename-Item` ¦ ren
+`del` / `rd` ¦ `Remove-Item` ¦ del, rm, rd
+`type` ¦ `Get-Content` ¦ type, cat, gc
+`if exist` ¦ `Test-Path` ¦ —
+```
+>>> info ¦ Get-ChildItem en détail
+```table
+Paramètre ¦ Rôle
+`-Recurse` ¦ sous-dossiers (`/s` de dir)
+`-File` / `-Directory` ¦ seulement les fichiers / seulement les dossiers
+`-Force` ¦ inclut les éléments **cachés** et système (`/a` de dir)
+`-Filter *.log` ¦ filtre rapide par nom
+`-Include` / `-Exclude` ¦ filtres multiples (`-Include *.doc, *.docx`)
+`-Depth 2` ¦ limite la profondeur de -Recurse
+```
+>>> type ps ¦ Liste aussi les éléments cachés de ton profil.
+= Get-ChildItem C:\Users\it.tech -Force ;; Get-ChildItem $env:USERPROFILE -Force ;; gci C:\Users\it.tech -Force ;; dir C:\Users\it.tech -Force ;; ls C:\Users\it.tech -Force ;; Get-ChildItem -Path C:\Users\it.tech -Force ;; gci $env:USERPROFILE -Force ;; gci ~ -Force ;; Get-ChildItem ~ -Force
+? Mode `d--h--` = dossier caché, comme AppData.
+>>> info ¦ Créer, copier, supprimer
+```code ps
+New-Item -Path C:\Temp\Rapports -ItemType Directory
+Copy-Item C:\Data\Compta -Destination D:\Backup\Compta -Recurse
+Remove-Item C:\Temp\Rapports -Recurse -WhatIf
+```
+!warn Sans `-Recurse`, `Copy-Item` d’un dossier copie le dossier **vide**, sans son contenu. Piège classique.
+>>> qcm ¦ `Copy-Item C:\Data\RH D:\Backup\RH` crée D:\Backup\RH, mais il est vide. Pourquoi ?
++ Il manque `-Recurse`
+* Il manque `-Force`
+* Il faut `xcopy`
+* D: est en lecture seule
+? Copy-Item ne descend dans le contenu qu’avec `-Recurse`.
+>>> info ¦ Lire et écrire du texte
+```table
+Cmdlet ¦ Rôle
+`Get-Content fichier` ¦ lit (une ligne = un élément)
+`Get-Content fichier -Tail 20` ¦ les 20 dernières lignes
+`Get-Content fichier -Wait` ¦ suit le fichier en direct (comme `tail -f`), Ctrl+C pour arrêter
+`Set-Content fichier 'texte'` ¦ remplace le contenu
+`Add-Content fichier 'texte'` ¦ ajoute à la fin
+`Select-String -Path *.log -Pattern 'ERREUR'` ¦ cherche un texte (le findstr de PowerShell)
+```
+!warn L’alias `sc` correspond à `Set-Content` dans PowerShell 5.1 ! `sc query spooler` y **écrit un fichier** au lieu d’interroger le service. Tape `sc.exe` pour appeler le vrai outil.
+>>> type ps ¦ Affiche les 5 dernières lignes du journal C:\Logs\backup_2026-10-07.log.
+= Get-Content C:\Logs\backup_2026-10-07.log -Tail 5 ;; gc C:\Logs\backup_2026-10-07.log -Tail 5 ;; cat C:\Logs\backup_2026-10-07.log -Tail 5 ;; type C:\Logs\backup_2026-10-07.log -Tail 5 ;; Get-Content -Path C:\Logs\backup_2026-10-07.log -Tail 5 ;; Get-Content C:\Logs\backup_2026-10-07.log -Last 5
+>>> type ps ¦ Cherche les lignes contenant « ERREUR » dans tous les .log de C:\Logs.
+= Select-String -Path C:\Logs\*.log -Pattern ERREUR ;; Select-String -Path C:\Logs\*.log -Pattern 'ERREUR' ;; Select-String -Path C:\Logs\*.log -Pattern "ERREUR" ;; sls -Path C:\Logs\*.log -Pattern ERREUR ;; Select-String ERREUR C:\Logs\*.log ;; Select-String 'ERREUR' C:\Logs\*.log ;; Get-ChildItem C:\Logs\*.log | Select-String ERREUR ;; Get-ChildItem C:\Logs\*.log | Select-String 'ERREUR' ;; sls ERREUR C:\Logs\*.log
+? Chaque résultat indique `fichier:numéro de ligne:contenu`. Select-String ignore la casse par défaut (`-CaseSensitive` sinon).
+>>> fill ps ¦ Vérifie que le disque de sauvegarde est présent avant de copier.
+```code ps
+if (___ D:\Backup) { Copy-Item C:\Data\RH D:\Backup -Recurse }
+```
+= Test-Path
+~ Get-Item ;; exist ;; Get-ChildItem ;; Resolve-Path
+? `Test-Path` renvoie `True` ou `False`, parfait dans un `if`.
+
+### LESSON p11 ¦ Processus et services en PowerShell ¦ 2 ¦ Get/Stop-Process, Get/Set/Restart-Service, et à distance sans WinRM.
+>>> info ¦ Processus
+```code ps
+Get-Process | Sort-Object CPU -Descending | Select-Object -First 5
+```
+```out
+
+Handles  NPM(K)    PM(K)      WS(K)     CPU(s)     Id  SI ProcessName
+-------  ------    -----      -----     ------     --  -- -----------
+   1450     117   162529     262144     1180,5   3104   0 MsMpEng
+    530      36    37379      60288      812,6   8920   1 ScanAssist
+   6234      12      987       1592      612,4      4   0 System
+   1510     173   249478     402384      522,4   5888   1 ms-teams
+```
+```table
+Colonne ¦ Signification
+`Handles` ¦ nombre de ressources ouvertes (fichiers, clés…)
+`NPM(K)` ¦ mémoire **n**on **p**aginée (Ko)
+`PM(K)` ¦ mémoire **p**rivée (Ko)
+`WS(K)` ¦ **W**orking **S**et : mémoire vive réellement occupée (Ko)
+`CPU(s)` ¦ secondes de processeur consommées depuis le lancement
+`SI` ¦ **S**ession **I**d : 0 = services
+```
+>>> type ps ¦ Arrête de force tous les processus nommés ScanAssist.
+= Stop-Process -Name ScanAssist -Force ;; Get-Process ScanAssist | Stop-Process -Force ;; Stop-Process -Name ScanAssist -Force -Confirm:$false ;; kill -Name ScanAssist -Force ;; spps -Name ScanAssist -Force ;; Get-Process -Name ScanAssist | Stop-Process -Force ;; Stop-Process -Id 8920 -Force ;; Stop-Process 8920 -Force
+? Le paramètre positionnel de Stop-Process est `-Id`, pas `-Name` : `Stop-Process ScanAssist` échouerait.
+>>> info ¦ Qui a lancé ce processus ?
+```code ps
+Get-Process -IncludeUserName | Where-Object UserName -like '*jrobert*'
+Get-Process ScanAssist | Select-Object Name, Id, Path, Company, StartTime
+```
+`-IncludeUserName` exige une session **administrateur**. `Path` donne l’exécutable : utile pour savoir quel logiciel est en cause.
+>>> info ¦ Services
+```table
+Cmdlet ¦ Rôle
+`Get-Service` ¦ lire l’état (`-Name`, `-DisplayName`, jokers acceptés)
+`Start-Service` / `Stop-Service` / `Restart-Service` ¦ agir (`-Force` pour les services avec dépendants)
+`Set-Service -StartupType Automatic` ¦ type de démarrage : `Automatic`, `Manual`, `Disabled`
+`Get-Service -DependentServices` ¦ les services qui dépendent de celui-ci
+```
+```code ps
+Get-Service -DisplayName *impression*
+Restart-Service Spooler -Force
+Set-Service wuauserv -StartupType Manual
+```
+>>> type ps ¦ Passe le service Windows Update (wuauserv) en démarrage manuel.
+= Set-Service wuauserv -StartupType Manual ;; Set-Service -Name wuauserv -StartupType Manual ;; Get-Service wuauserv | Set-Service -StartupType Manual
+>>> info ¦ Les services d’un autre poste, sans WinRM
+Dans Windows PowerShell 5.1, `Get-Service` accepte `-ComputerName` : il utilise le **même canal RPC que `sc \\PC`**, pas WinRM.
+```code ps
+Get-Service -ComputerName PC-COMPTA-02 -Name Spooler
+Get-Service -ComputerName PC-COMPTA-02 -Name Spooler | Restart-Service
+```
+!warn Ce paramètre a disparu de `Get-Service` dans PowerShell 7. Sur un parc en 5.1 sans WinRM, il reste très pratique ; sinon, `sc.exe \\PC`.
+>>> fill ps ¦ Redémarre le spouleur du poste de la réception, à distance.
+```code ps
+Get-Service -___ PC-RECEP-01 -Name Spooler | ___
+```
+= ComputerName ;; Restart-Service
+~ Session ;; Invoke-Command ;; Start-Service ;; Server
+? Le pipe transmet l’objet service distant : Restart-Service agit sur le bon poste.
+>>> qcm ¦ Sur un parc où WinRM est désactivé, quelle commande permet de lire l’état d’un service distant ?
++ `Get-Service -ComputerName PC-COMPTA-02 -Name Spooler`
+* `Invoke-Command -ComputerName PC-COMPTA-02 { Get-Service Spooler }`
+* `Enter-PSSession PC-COMPTA-02`
+* `Get-Service -Session PC-COMPTA-02`
+? `Invoke-Command` et `Enter-PSSession` reposent sur WinRM. `Get-Service -ComputerName` (5.1) et `sc.exe \\PC` passent par RPC.
+
+### LESSON p12 ¦ Inventaire matériel avec CIM ¦ 3 ¦ Numéro de série, modèle, disque, mémoire, OS : les classes Win32_ indispensables.
+>>> info ¦ CIM et WMI
+**WMI** (**W**indows **M**anagement **I**nstrumentation) est une base d’informations sur le matériel et le système, organisée en **classes** (`Win32_BIOS`, `Win32_LogicalDisk`…). **CIM** (**C**ommon **I**nformation **M**odel) est le standard sur lequel elle repose.
+```table
+Ancienne commande ¦ Moderne ¦ Remarque
+`wmic bios get serialnumber` ¦ `Get-CimInstance Win32_BIOS` ¦ wmic est obsolète, absent par défaut des Windows 11 récents
+`Get-WmiObject Win32_BIOS` ¦ `Get-CimInstance Win32_BIOS` ¦ Get-WmiObject n’existe plus en PowerShell 7
+```
+>>> type ps ¦ Affiche le numéro de série du poste.
+= (Get-CimInstance Win32_BIOS).SerialNumber ;; Get-CimInstance Win32_BIOS | Select-Object SerialNumber ;; Get-CimInstance -ClassName Win32_BIOS | Select-Object SerialNumber ;; Get-CimInstance Win32_BIOS | Select-Object -ExpandProperty SerialNumber ;; gcim Win32_BIOS | Select-Object SerialNumber ;; (gcim Win32_BIOS).SerialNumber ;; Get-CimInstance Win32_BIOS
+```out
+8H2KLM3
+```
+!it Le numéro de série (le « Service Tag » chez Dell) sert à vérifier la garantie et à ouvrir un dossier chez le constructeur, sans retourner le PC.
+>>> info ¦ Les classes à connaître
+```table
+Classe ¦ Propriétés utiles
+`Win32_ComputerSystem` ¦ Manufacturer, Model, TotalPhysicalMemory, UserName (utilisateur connecté), Domain
+`Win32_BIOS` ¦ SerialNumber, SMBIOSBIOSVersion, ReleaseDate
+`Win32_OperatingSystem` ¦ Caption, Version, BuildNumber, LastBootUpTime, FreePhysicalMemory
+`Win32_Processor` ¦ Name, NumberOfCores
+`Win32_LogicalDisk` ¦ DeviceID, Size, FreeSpace (`DriveType=3` = disque local)
+`Win32_NetworkAdapterConfiguration` ¦ IPAddress, MACAddress, DHCPEnabled (`IPEnabled=True`)
+`Win32_Printer` ¦ Name, PortName, Default
+`Win32_StartupCommand` ¦ programmes lancés au démarrage
+`Win32_QuickFixEngineering` ¦ correctifs installés (= Get-HotFix)
+```
+>>> info ¦ Filtrer côté WMI
+```code ps
+Get-CimInstance Win32_LogicalDisk -Filter "DriveType=3" |
+    Select-Object DeviceID,
+        @{N='Taille (Go)'; E={ [math]::Round($_.Size / 1GB) }},
+        @{N='Libre (Go)';  E={ [math]::Round($_.FreeSpace / 1GB, 1) }},
+        @{N='% libre';     E={ [math]::Round($_.FreeSpace / $_.Size * 100) }}
+```
+```out
+
+DeviceID Taille (Go) Libre (Go) % libre
+-------- ----------- ---------- -------
+C:               511       38,4       8
+D:               932        612      66
+```
+`-Filter` utilise la syntaxe **WQL** (proche de SQL) : `=`, `<>`, `>`, `AND`, `LIKE 'PC%'`. C’est l’un des rares endroits de PowerShell où l’on écrit `=` pour comparer.
+>>> fill ps ¦ Garde uniquement les disques locaux (type 3).
+```code ps
+Get-CimInstance Win32_LogicalDisk -Filter "___"
+```
+= DriveType=3
+~ DriveType -eq 3 ;; $_.DriveType -eq 3 ;; Type=Local
+? Dans un filtre WQL on écrit `=`, pas `-eq`.
+>>> type ps ¦ Affiche la date du dernier démarrage du poste.
+= (Get-CimInstance Win32_OperatingSystem).LastBootUpTime ;; Get-CimInstance Win32_OperatingSystem | Select-Object LastBootUpTime ;; gcim Win32_OperatingSystem | Select-Object LastBootUpTime ;; (gcim Win32_OperatingSystem).LastBootUpTime ;; Get-CimInstance -ClassName Win32_OperatingSystem | Select-Object LastBootUpTime
+? « Je redémarre tous les soirs » : la propriété `LastBootUpTime` dit la vérité. Attention, le démarrage rapide de Windows 10/11 ne réinitialise pas ce compteur quand on « arrête » : seul « Redémarrer » le fait.
+>>> info ¦ Interroger un autre poste sans WinRM
+Par défaut, `Get-CimInstance -ComputerName` utilise **WinRM** (protocole WS-Man). Sur un parc où WinRM n’est pas activé, on crée une **session CIM en DCOM**, l’ancien protocole RPC de WMI :
+```code ps
+$opt = New-CimSessionOption -Protocol Dcom
+$s = New-CimSession -ComputerName PC-COMPTA-02 -SessionOption $opt
+Get-CimInstance Win32_BIOS -CimSession $s
+Get-CimInstance Win32_ComputerSystem -CimSession $s | Select-Object Model, UserName
+Remove-CimSession $s
+```
+```anatomy ps
+New-CimSessionOption ¦ cmd ¦ Prépare les options de connexion.
+-Protocol Dcom ¦ param ¦ Force **DCOM** (RPC, port 135 + ports dynamiques) au lieu de WS-Man/WinRM (5985).
+New-CimSession ¦ cmd ¦ Ouvre une connexion réutilisable vers le poste.
+-CimSession $s ¦ param ¦ Les requêtes suivantes passent par cette session.
+Remove-CimSession ¦ cmd ¦ Ferme proprement la connexion.
+```
+!tip `Get-WmiObject -ComputerName PC` (5.1) utilise aussi DCOM directement. Le script d’équipe `C:\Scripts\inventaire.ps1` utilise la méthode CimSession + DCOM : tu l’étudieras dans une mission.
+>>> qcm ¦ `Get-CimInstance Win32_BIOS -ComputerName PC-COMPTA-02` échoue avec une erreur WinRM. Que faire sur un parc sans WinRM ?
++ Créer une CimSession avec `New-CimSessionOption -Protocol Dcom`
+* Lancer `winrm quickconfig` sur le poste
+* Utiliser Enter-PSSession
+* Ce n’est pas possible
+? DCOM passe par RPC, comme les outils de gestion classiques. Le pare-feu du poste doit autoriser « Infrastructure de gestion Windows (WMI) ».
+>>> qcm ¦ Pourquoi éviter `Get-CimInstance Win32_Product` pour lister les logiciels installés ?
++ Elle est très lente et déclenche une vérification de réparation de chaque programme MSI
+* Elle n’existe pas
+* Elle exige WinRM
+* Elle ne liste que les logiciels Microsoft
+? Win32_Product fait vérifier chaque MSI par Windows Installer (journal 1035 dans l’Observateur), parfois avec des réparations. Préfère le Registre (`…\Uninstall`), vu dans la leçon sur le registre.

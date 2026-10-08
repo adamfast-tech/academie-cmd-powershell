@@ -1,0 +1,530 @@
+=== base ¦ Fondamentaux ¦ base ¦ Terminal, chemins, commutateurs, guillemets, droits admin : le socle commun à CMD et PowerShell.
+--- Premiers pas
+### LESSON b1 ¦ Terminal, console, shell : qui fait quoi ? ¦ 1 ¦ CMD, PowerShell, Windows Terminal : les rôles de chacun.
+>>> info ¦ Trois mots qu’on confond
+Quand tu ouvres une « fenêtre noire », trois couches travaillent ensemble.
+
+- **Le terminal** est la fenêtre : il affiche le texte et transmet ton clavier. Exemples : Windows Terminal, ou l’ancienne fenêtre `conhost.exe`.
+- **Le shell** est l’interpréteur : il lit ta ligne, la découpe et l’exécute. `cmd.exe` et `powershell.exe` sont des shells.
+- **La commande** est ce qui est lancé : un programme comme `ping.exe` ou `ipconfig.exe`, ou une commande interne du shell comme `dir`.
+!tip Dans Windows Terminal, un onglet peut être CMD et le suivant PowerShell : même fenêtre, shells différents.
+>>> info ¦ CMD, l’héritier de MS-DOS
+`cmd.exe`, l’Invite de commandes, existe depuis Windows NT (1993). Il descend de `COMMAND.COM`, le shell de MS-DOS (1981). Il manipule du **texte** : chaque commande affiche des lignes, et la suivante ne peut lire que des lignes.
+
+- Présent sur tous les Windows, y compris en environnement de récupération (WinRE).
+- Parfait pour les outils classiques : `ipconfig`, `ping`, `robocopy`, `gpupdate`, scripts `.bat`.
+- Vite limité dès qu’il faut filtrer, trier ou calculer.
+>>> info ¦ PowerShell, le shell objet
+Windows PowerShell 5.1 (`powershell.exe`) est installé sur tous les Windows 10, 11 et Server. Il manipule des **objets** .NET : un service n’est pas une ligne de texte, c’est un objet avec des propriétés (`Name`, `Status`, `StartType`).
+```code ps
+Get-Service Spooler | Select-Object Name, Status, StartType
+```
+```out
+
+Name    Status  StartType
+----    ------  ---------
+Spooler Running Automatic
+```
+- PowerShell 7 (`pwsh.exe`) est la version moderne et multiplateforme, à installer à part.
+- Active Directory, Exchange, réseau, stockage : l’administration Windows moderne passe par PowerShell.
+>>> qcm ¦ Quel shell manipule des objets plutôt que du texte ?
++ PowerShell
+* CMD
+* Windows Terminal
+* conhost.exe
+? PowerShell fait passer des objets .NET dans le pipeline. CMD ne transmet que du texte. Windows Terminal et conhost ne sont que des fenêtres.
+>>> qcm ¦ Quel est l’exécutable de PowerShell 7 ?
++ `pwsh.exe`
+* `powershell.exe`
+* `ps.exe`
+* `posh.exe`
+? `powershell.exe` lance Windows PowerShell 5.1, intégré à Windows. PowerShell 7 s’installe à part et se lance avec `pwsh`.
+>>> info ¦ Ouvrir la bonne fenêtre, au bon niveau
+- Win+R, `cmd`, Entrée : invite de commandes normale.
+- Win+R, `cmd`, puis **Ctrl+Maj+Entrée** : invite **administrateur** (titre « Administrateur : Invite de commandes »).
+- Win+X, « Terminal (admin) » : Windows Terminal élevé.
+- Dans une invite CMD : `powershell` lance PowerShell dedans, `exit` revient à CMD.
+!it Au support, garde deux fenêtres : une normale pour diagnostiquer ce que voit l’utilisateur, une élevée pour réparer.
+>>> qcm ¦ Dans la boîte Exécuter (Win+R), quel raccourci lance le programme en administrateur ?
++ Ctrl+Maj+Entrée
+* Alt+Entrée
+* Maj+Entrée
+* Ctrl+Entrée
+? Ctrl+Maj+Entrée déclenche l’invite UAC et ouvre le programme élevé. Le raccourci marche aussi depuis la recherche du menu Démarrer.
+>>> type cmd ¦ Tape la commande CMD qui affiche la version de Windows.
+= ver
+```out
+
+Microsoft Windows [version 10.0.26100.2033]
+```
+? `ver` (**ver**sion) est une commande interne de CMD. La build 26100 correspond à Windows 11 24H2.
+
+### LESSON b2 ¦ Anatomie d’une commande ¦ 1 ¦ Commande, arguments, commutateurs : lire une ligne de gauche à droite.
+>>> info ¦ Une ligne, un ordre précis
+Une ligne se lit de gauche à droite : d’abord **le nom de la commande**, puis ce qu’elle doit traiter (**les arguments**), puis la façon de le faire (**les commutateurs**, qu’on appelle aussi options ou paramètres). Le shell découpe la ligne sur les **espaces**.
+```anatomy cmd
+ping ¦ cmd ¦ Le programme `ping.exe` : il envoie des paquets ICMP « echo » pour vérifier qu’une machine répond.
+srv-fichiers ¦ arg ¦ L’**argument** : la cible. Un nom de machine ou une adresse IP.
+-n ¦ sw ¦ Le **commutateur** `-n` (**n**umber) : le nombre de requêtes.
+4 ¦ val ¦ La **valeur** de `-n` : 4 requêtes.
+```
+>>> info ¦ La même logique dans PowerShell
+En PowerShell, les commutateurs s’appellent des **paramètres** et commencent toujours par un tiret. Leurs noms sont entiers et lisibles.
+```anatomy ps
+Get-ChildItem ¦ cmd ¦ La **cmdlet** (verbe-nom) : « obtenir les éléments enfants » d’un dossier.
+-Path ¦ param ¦ Le paramètre `-Path` : où regarder.
+C:\Users ¦ path ¦ Sa valeur : le dossier `C:\Users`.
+-Recurse ¦ param ¦ Un paramètre **switch** : pas de valeur, sa présence suffit à activer la descente dans les sous-dossiers.
+```
+>>> qcm ¦ Dans `tracert -d 8.8.8.8`, quel morceau est l’argument ?
++ `8.8.8.8`
+* `-d`
+* `tracert`
+* Il n’y a pas d’argument
+? `tracert` est la commande, `-d` un commutateur (ne pas résoudre les noms), `8.8.8.8` la cible, donc l’argument.
+>>> info ¦ Les espaces découpent tout
+Pour le shell, un espace sépare deux morceaux. `copy C:\Program Files\app.ini D:\` passe donc **trois** arguments à `copy` : `C:\Program`, `Files\app.ini` et `D:\`.
+
+Dès qu’un chemin contient un espace, entoure-le de guillemets doubles.
+```code cmd
+dir "C:\Program Files"
+```
+>>> order cmd ¦ Remets dans l’ordre : lister le dossier C:\Logs, noms seulement.
+~ dir ;; C:\Logs ;; /b
+x~ -b ;; \b
+? Commande, argument (le dossier), puis commutateur `/b` (**b**are : affichage brut, seulement les noms). Dans CMD, l’ordre argument/commutateur est souvent libre, mais cette forme est la plus lisible.
+>>> qcm ¦ Que fait `ping srv-ad01 -n 1` ?
++ Envoie une seule requête à srv-ad01
+* Envoie des requêtes sans s’arrêter
+* Affiche seulement l’adresse IP de srv-ad01
+* Envoie 1 Mo de données
+? `-n` fixe le nombre de requêtes. Pour un ping continu, c’est `-t` ; pour la taille des paquets, `-l`.
+>>> type cmd ¦ Envoie 2 pings au serveur srv-ad01.
+= ping srv-ad01 -n 2 ;; ping -n 2 srv-ad01 ;; ping srv-ad01 /n 2 ;; ping /n 2 srv-ad01
+hint: La commande `ping`, la cible `srv-ad01`, puis `-n` suivi du nombre.
+```out
+
+Envoi d’une requête 'Ping'  srv-ad01.contoso.local [192.168.10.5] avec 32 octets de données :
+Réponse de 192.168.10.5 : octets=32 temps<1ms TTL=128
+Réponse de 192.168.10.5 : octets=32 temps<1ms TTL=128
+
+Statistiques Ping pour 192.168.10.5:
+    Paquets : envoyés = 2, reçus = 2, perdus = 0 (perte 0%),
+```
+? `ping` accepte `-n` comme `/n`, avant ou après la cible.
+
+### LESSON b3 ¦ Le mystère des / \ et - ¦ 1 ¦ Pourquoi Windows met des antislashs dans les chemins et des slashs dans les options.
+>>> info ¦ Trois caractères, trois rôles
+```table
+Caractère ¦ Nom ¦ Rôle sous Windows
+`\` ¦ antislash (backslash) ¦ sépare les dossiers d’un chemin : `C:\Users\it.tech`
+`/` ¦ slash ¦ préfixe des commutateurs dans CMD : `dir /s`
+`-` ¦ tiret ¦ préfixe des paramètres PowerShell (`-Recurse`) et de certains outils (`ping -n`)
+```
+Sous Linux et sur le web, c’est l’inverse : `/` sépare les dossiers (`/home/karim`, `https://site/page`) et `-` introduit les options.
+>>> info ¦ D’où vient cet héritage ?
+MS-DOS 1.0 (1981) reprend les habitudes de CP/M et des systèmes DEC : les options commencent par `/`. Il n’existe pas encore de dossiers. Quand MS-DOS 2.0 (1983) ajoute les sous-répertoires, `/` est déjà pris : Microsoft choisit `\` comme séparateur. Quarante ans plus tard, on vit toujours avec ce choix.
+!tip L’API Windows accepte aussi `/` dans les chemins : `cd C:/Windows` fonctionne. Mais `\` reste la norme, et certains vieux outils confondent un `/` avec un commutateur.
+>>> info ¦ Lire un chemin Windows
+Prenons `C:\Users\it.tech\Desktop\notes.txt` :
+```table
+Morceau ¦ Signification
+`C:` ¦ la lettre de lecteur
+`\` juste après ¦ la racine du lecteur
+`Users\it.tech\Desktop` ¦ les dossiers successifs, séparés par `\`
+`notes.txt` ¦ le fichier : nom puis extension
+```
+>>> qcm ¦ Dans CMD, que signifie le `/` de `dir /w` ?
++ Il introduit un commutateur
+* Il sépare deux dossiers
+* Il désigne la racine du disque
+* Il divise deux nombres
+? Dans CMD, `/` annonce une option. `/w` = **w**ide : affichage en colonnes.
+>>> fill cmd ¦ Complète le chemin vers les Documents de jdupont.
+```code cmd
+cd C:___Users___jdupont___Documents
+```
+= \ ;; \ ;; \
+~ / ;; - ;; :
+? Les chemins Windows utilisent l’antislash. `/` marche souvent dans les chemins, mais c’est avant tout le préfixe des commutateurs CMD.
+>>> qcm ¦ En PowerShell, quel préfixe introduit un paramètre ?
++ `-` comme dans `-Recurse`
+* `/` comme dans `/Recurse`
+* `\` comme dans `\Recurse`
+* `--` obligatoirement
+? PowerShell utilise toujours le tiret simple. Le nom peut être abrégé tant qu’il reste unique : `-Rec` suffit pour `-Recurse`.
+>>> info ¦ Les chemins réseau commencent par deux antislashs
+Un chemin **UNC** (Universal Naming Convention) commence par `\\` : `\\SRV-FICHIERS\Compta`. Le premier morceau est le serveur, le second le partage.
+
+- `\\SRV-FICHIERS\Compta\bilan_2025.xlsx` : un fichier sur un partage.
+- `\\PC-COMPTA-02\C$` : le **partage administratif** du disque C: d’un poste, réservé aux administrateurs.
+!it Les partages administratifs `C$` et `ADMIN$` permettent d’agir sur un poste sans WinRM : copier un installeur, lire un journal, nettoyer un dossier.
+>>> type cmd ¦ Liste le contenu du partage Compta du serveur SRV-FICHIERS.
+= dir \\SRV-FICHIERS\Compta ;; dir "\\SRV-FICHIERS\Compta" ;; dir \\SRV-FICHIERS\Compta\
+hint: `dir` suivi du chemin UNC : deux antislashs, le serveur, un antislash, le partage.
+```out
+ Le volume dans le lecteur \\SRV-FICHIERS\Compta s’appelle Data
+ Le numéro de série du volume est 3F10-AB7E
+
+ Répertoire de \\SRV-FICHIERS\Compta
+
+06/10/2026  09:15    <DIR>          .
+06/10/2026  09:15    <DIR>          ..
+13/03/2026  09:00    <DIR>          Archives
+26/09/2026  17:04           248 320 bilan_2025.xlsx
+30/09/2026  11:32         1 843 211 factures_septembre.pdf
+06/10/2026  09:15            56 320 notes_de_frais.xlsx
+               3 fichier(s)       2 147 851 octets
+               3 Rép(s)  1 209 462 790 553 octets libres
+```
+? `dir` lit directement un chemin UNC. Pour t’y **déplacer** avec `cd`, CMD refuse : on passe par `pushd \\SRV-FICHIERS\Compta` ou `net use`.
+
+### LESSON b4 ¦ Décoder les commutateurs : /s /q /f… ¦ 1 ¦ Chaque lettre vient d’un mot anglais : apprends à les deviner.
+>>> info ¦ Une lettre, un mot anglais
+Les commutateurs de CMD sont presque toujours l’initiale d’un mot anglais. Retenir le mot, c’est retenir l’option.
+```table
+Commutateur ¦ Mot d’origine ¦ Sens le plus courant
+`/s` ¦ **S**ubdirectories ¦ inclure les sous-dossiers
+`/q` ¦ **Q**uiet ¦ silencieux, sans confirmation
+`/f` ¦ **F**orce ¦ forcer (lecture seule, processus récalcitrant)
+`/y` ¦ **Y**es ¦ répondre Oui aux questions
+`/p` ¦ **P**rompt, **P**ause ¦ demander confirmation, ou s’arrêter à chaque écran
+`/a` ¦ **A**ttributes, **A**ll ¦ filtrer par attributs, ou tout afficher
+`/b` ¦ **B**are ¦ affichage brut, noms seulement
+`/e` ¦ **E**mpty (dirs) ¦ copier aussi les dossiers vides
+`/i` ¦ **I**gnore case ¦ ignorer majuscules et minuscules
+`/v` ¦ in**V**ert ¦ inverser le filtre
+`/t` ¦ **T**ime, **T**ree ¦ délai (shutdown) ou arborescence (taskkill)
+`/?` ¦ aide ¦ afficher l’aide de la commande
+```
+>>> info ¦ Attention : une même lettre peut changer de sens
+Les commandes ont été écrites par des équipes différentes, à des époques différentes. Une lettre n’a donc pas toujours le même sens :
+
+- `shutdown /r` = **r**estart, mais `findstr /r` = **r**egular expression.
+- `shutdown /t 60` = **t**ime (délai), mais `taskkill /t` = **t**ree (le processus et ses enfants).
+- `dir /s` = **s**ubdirectories, mais `shutdown /s` = **s**hutdown (éteindre).
+!tip En cas de doute, `commande /?` affiche l’aide officielle avec chaque lettre expliquée.
+>>> qcm ¦ Que signifie `/q` dans `rd /s /q C:\Temp\cache` ?
++ Quiet : supprimer sans demander confirmation
+* Quick : suppression rapide
+* Query : interroger avant de supprimer
+* Quota : vérifier l’espace disque
+? `rd /s` supprime toute l’arborescence, `/q` évite la question « Êtes-vous sûr (O/N) ? ».
+>>> fill cmd ¦ Ferme Chrome de force.
+```code cmd
+taskkill /im chrome.exe ___
+```
+= /f
+~ /s ;; /q ;; /t ;; /y
+? `/f` = **f**orce. Sans lui, taskkill demande au programme de se fermer, et celui-ci peut refuser (document non enregistré, programme figé).
+>>> qcm ¦ Dans `shutdown /r /t 0`, que fait `/t 0` ?
++ Il fixe le délai à 0 seconde
+* Il redémarre tous les postes
+* Il termine les processus enfants
+* Il affiche un message
+? `/t` = **t**ime, délai en secondes avant l’action. `/r` = **r**estart.
+>>> info ¦ Valeurs collées ou séparées
+Certains commutateurs attendent une valeur. Selon l’outil, deux écritures existent :
+
+- **avec deux-points** : `dir /a:h`, `robocopy … /R:2 /W:5 /LOG:C:\Logs\copie.log`
+- **avec un espace** : `ping -n 4`, `shutdown /t 60`, `taskkill /im notepad.exe`
+Beaucoup de commandes acceptent aussi la forme collée : `dir /ah` équivaut à `dir /a:h`.
+!warn `sc.exe` est l’exception célèbre : il exige un espace **après** le signe égal. On écrit `sc config wuauserv start= disabled`.
+>>> type cmd ¦ Affiche l’aide de la commande robocopy.
+= robocopy /? ;; help robocopy
+? `/?` fonctionne avec presque toutes les commandes. `help commande` aussi, pour les commandes internes et quelques autres.
+>>> qcm ¦ Quel commutateur de `findstr` affiche les lignes qui NE contiennent PAS le texte ?
++ `/v`
+* `/n`
+* `/i`
+* `/x`
+? `/v` = in**v**ert. `/n` numérote les lignes, `/i` ignore la casse, `/x` exige une ligne identique au motif.
+
+### LESSON b5 ¦ Chemins absolus, relatifs, . et .. ¦ 1 ¦ Se repérer dans l’arborescence sans se perdre.
+>>> info ¦ Absolu ou relatif ?
+- Un chemin **absolu** part de la racine : `C:\Users\it.tech\Documents`. Il marche d’où que tu sois.
+- Un chemin **relatif** part du **dossier courant** : `Documents\scripts`.
+Le dossier courant s’affiche dans l’invite : `C:\Users\it.tech>` dans CMD, `PS C:\Users\it.tech>` dans PowerShell.
+>>> info ¦ Les raccourcis . .. \ et ~
+```table
+Écriture ¦ Signification ¦ Depuis C:\Users\it.tech
+`.` ¦ le dossier courant ¦ `.\notes.txt` = `C:\Users\it.tech\notes.txt`
+`..` ¦ le dossier parent ¦ `cd ..` mène à `C:\Users`
+`..\..` ¦ deux niveaux au-dessus ¦ `cd ..\..` mène à `C:\`
+`\` au début ¦ la racine du lecteur courant ¦ `cd \Windows` mène à `C:\Windows`
+`~` (PowerShell) ¦ ton dossier de profil ¦ `cd ~\Desktop`
+```
+>>> qcm ¦ Tu es dans `C:\Users\it.tech\Documents`. Où mène `cd ..\Desktop` ?
++ `C:\Users\it.tech\Desktop`
+* `C:\Users\Desktop`
+* `C:\Desktop`
+* `C:\Users\it.tech\Documents\Desktop`
+? `..` remonte d’un cran (`C:\Users\it.tech`), puis on descend dans `Desktop`.
+>>> type cmd ¦ Tu es dans C:\Users\it.tech\Desktop. Remonte au dossier parent.
+= cd .. ;; cd.. ;; chdir ..
+```out
+
+C:\Users\it.tech>
+```
+? `cd ..` remonte d’un niveau. CMD accepte même `cd..` sans espace (PowerShell aussi, grâce à une fonction prédéfinie).
+>>> info ¦ Les variables d’environnement, des chemins tout prêts
+Windows définit des variables qui contiennent des chemins utiles. Elles évitent d’écrire en dur le nom de l’utilisateur ou du disque.
+```table
+CMD ¦ PowerShell ¦ Contient (exemple)
+`%USERPROFILE%` ¦ `$env:USERPROFILE` ¦ `C:\Users\it.tech`
+`%TEMP%` ¦ `$env:TEMP` ¦ `C:\Users\it.tech\AppData\Local\Temp`
+`%WINDIR%` ¦ `$env:windir` ¦ `C:\Windows`
+`%COMPUTERNAME%` ¦ `$env:COMPUTERNAME` ¦ `PC-IT-01`
+`%USERNAME%` ¦ `$env:USERNAME` ¦ `it.tech`
+`%APPDATA%` ¦ `$env:APPDATA` ¦ `…\AppData\Roaming`
+```
+!it Dans un script de nettoyage déployé sur 200 postes, `%TEMP%` pointe automatiquement vers le bon profil sur chacun.
+>>> fill cmd ¦ Ouvre le dossier temporaire de l’utilisateur, quel qu’il soit.
+```code cmd
+cd ___
+```
+= %TEMP%
+~ $env:TEMP ;; %TEMP ;; C:\TEMP
+? Dans CMD, une variable s’écrit entre deux `%`. `$env:TEMP` est la syntaxe PowerShell. `C:\TEMP` est un dossier fixe, pas celui de l’utilisateur.
+>>> type ps ¦ En PowerShell, va dans ton Bureau avec le raccourci du profil.
+= cd ~\Desktop ;; Set-Location ~\Desktop ;; cd $env:USERPROFILE\Desktop ;; cd $HOME\Desktop ;; Set-Location $HOME\Desktop
+```out
+PS C:\Users\it.tech\Desktop>
+```
+? `~` (et `$HOME`) désigne ton profil dans PowerShell. `cd` y est un alias de `Set-Location`.
+
+--- Écrire juste
+### LESSON b6 ¦ Guillemets, espaces et caractères spéciaux ¦ 2 ¦ Protéger un chemin, échapper un caractère, choisir entre ' et ".
+>>> info ¦ Les guillemets protègent les espaces
+```code cmd
+copy "C:\Data\Partage\procedure imprimante.pdf" "D:\Archives\"
+```
+Sans guillemets, `copy` verrait quatre morceaux. Les guillemets doubles `"…"` regroupent un chemin en un seul argument. Dans CMD, seuls les guillemets **doubles** comptent : les apostrophes sont du texte ordinaire.
+>>> info ¦ Les caractères réservés de CMD
+Certains caractères ont un sens spécial dans CMD : `&` (enchaîner), `|` (pipe), `>` et `<` (redirection), `^` (échappement), `%` (variable). Pour en écrire un tel quel, mets-le entre guillemets ou précède-le de `^`.
+```code cmd
+echo Réunion R^&D à 10h
+```
+```out
+Réunion R&D à 10h
+```
+!warn Dans un fichier `.bat`, un `%` littéral s’écrit `%%`. En console, un seul suffit.
+>>> info ¦ PowerShell : simples ou doubles, ce n’est pas pareil
+- `'guillemets simples'` : texte **littéral**, rien n’est interprété.
+- `"guillemets doubles"` : PowerShell **remplace** les variables et les sous-expressions `$( )`.
+```code ps
+$nom = 'Karim'
+'Bonjour $nom'
+"Bonjour $nom"
+```
+```out
+Bonjour $nom
+Bonjour Karim
+```
+>>> qcm ¦ En PowerShell, que renvoie `'Total : $x'` si `$x` vaut 5 ?
++ `Total : $x`
+* `Total : 5`
+* Une erreur
+* `Total : `
+? Les guillemets simples ne remplacent rien. Avec `"Total : $x"`, on obtiendrait `Total : 5`.
+>>> info ¦ L’accent grave, l’échappement de PowerShell
+Dans PowerShell, le caractère d’échappement est l’accent grave `` ` `` (AltGr+7 sur un clavier français). Dans une chaîne entre guillemets doubles :
+```table
+Séquence ¦ Résultat
+`` `n `` ¦ retour à la ligne
+`` `t `` ¦ tabulation
+`` `" `` ¦ un guillemet double à l’intérieur de la chaîne
+`` `$ `` ¦ un dollar littéral
+```
+Placé en **toute fin de ligne**, il permet aussi de continuer une longue commande à la ligne suivante.
+!tip Préfère couper une longue commande juste après un `|` : un accent grave suivi d’un espace invisible casse la commande sans message clair.
+>>> fill ps ¦ Affiche une phrase qui contient la valeur de $prenom.
+```code ps
+$prenom = 'Léa'
+Write-Host ___Bienvenue $prenom___
+```
+= " ;; "
+~ ' ;; ` ;; %
+? Les guillemets doubles remplacent `$prenom` par sa valeur. Avec des simples, PowerShell afficherait `$prenom` tel quel.
+>>> qcm ¦ Dans CMD, comment afficher littéralement `A & B` avec echo ?
++ `echo A ^& B`
+* `echo A \& B`
+* `` echo A `& B ``
+* `echo 'A & B'`
+? `^` échappe le caractère suivant dans CMD. Les apostrophes ne protègent rien dans CMD ; `\` et l’accent grave non plus.
+
+### LESSON b7 ¦ Jokers * et ? ¦ 1 ¦ Désigner plusieurs fichiers d’un coup.
+>>> info ¦ Deux jokers
+- `*` remplace **n’importe quelle suite** de caractères, même vide.
+- `?` remplace **exactement un** caractère.
+```table
+Motif ¦ Correspond à
+`*.log` ¦ tous les fichiers .log
+`backup_*` ¦ tout ce qui commence par backup_
+`rapport_202?.xlsx` ¦ rapport_2024.xlsx, rapport_2025.xlsx… mais pas rapport_20250.xlsx
+`*.*` ¦ tous les fichiers (dans CMD)
+```
+>>> type cmd ¦ Liste seulement les fichiers .log du dossier C:\Logs.
+= dir C:\Logs\*.log ;; dir "C:\Logs\*.log"
+hint: `dir`, le dossier, un antislash, puis le motif `*.log`.
+```out
+ Le volume dans le lecteur C s’appelle OS
+ Le numéro de série du volume est 7A3C-91F2
+
+ Répertoire de C:\Logs
+
+08/10/2026  08:40               412 app.log
+06/10/2026  23:47               953 backup_2026-10-06.log
+07/10/2026  23:52             1 240 backup_2026-10-07.log
+23/09/2026  09:00               122 install.log
+               4 fichier(s)            2 727 octets
+               0 Rép(s)  41 234 567 168 octets libres
+```
+>>> qcm ¦ Quel motif désigne PC-RECEP-01 et PC-RECEP-02, mais ni PC-RECEP-10 ni PC-RECEP-010 ?
++ `PC-RECEP-0?`
+* `PC-RECEP-*`
+* `PC-RECEP-??`
+* `PC-RECEP-0*`
+? `0?` exige un 0 puis exactement un caractère. `??` accepterait `10`, `0*` accepterait `010`.
+>>> info ¦ Jokers et PowerShell
+PowerShell comprend les mêmes jokers, et les applique aussi aux noms de commandes et de services :
+```code ps
+Get-ChildItem C:\Logs\backup_*.log
+Get-Service win*
+Get-Command *-ADUser
+```
+Il ajoute l’opérateur `-like` pour comparer un texte à un motif : `$poste -like 'PC-*'`.
+>>> fill ps ¦ Liste les services dont le nom commence par « w ».
+```code ps
+Get-Service ___
+```
+= w*
+~ *w ;; w? ;; %w%
+? `w*` : un « w » puis n’importe quoi. `%w%` est la syntaxe du LIKE de SQL et de WQL, pas de PowerShell.
+>>> info ¦ Prudence avec les jokers destructeurs
+`del *.*` dans le mauvais dossier vide ce dossier. Avant de supprimer avec un joker, **liste d’abord** avec le même motif : `dir C:\Temp\*.tmp`, puis seulement `del C:\Temp\*.tmp`. En PowerShell, ajoute `-WhatIf` pour voir sans agir.
+!warn CMD demande confirmation pour `del *` (« Êtes-vous sûr (O/N) ? »), sauf avec `/q`. Ne prends pas l’habitude de mettre `/q` partout.
+>>> type ps ¦ Liste les fichiers de C:\Logs dont le nom commence par backup_.
+= Get-ChildItem C:\Logs\backup_* ;; Get-ChildItem C:\Logs\backup_*.log ;; Get-ChildItem C:\Logs -Filter backup_* ;; Get-ChildItem -Path C:\Logs -Filter backup_* ;; Get-ChildItem -Path C:\Logs\backup_*
+```out
+
+    Répertoire : C:\Logs
+
+
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        06/10/2026     23:47            953 backup_2026-10-06.log
+-a----        07/10/2026     23:52           1240 backup_2026-10-07.log
+```
+? Les alias `ls` et `dir` fonctionnent aussi : ce sont des raccourcis de `Get-ChildItem`.
+
+### LESSON b8 ¦ Droits administrateur, UAC et prudence ¦ 2 ¦ Savoir si ta fenêtre est élevée, et éviter les commandes qui ne pardonnent pas.
+>>> info ¦ Utilisateur ou administrateur ?
+Même membre du groupe Administrateurs, tu travailles par défaut avec des droits **standards**. Le contrôle de compte d’utilisateur (UAC) n’accorde les droits complets qu’après confirmation : c’est la fenêtre « **élevée** ».
+
+- Son titre commence par « Administrateur : ».
+- Certaines commandes exigent l’élévation : `sfc /scannow`, `net session`, `netstat -b`, `chkdsk /f`, toute écriture dans HKLM…
+>>> info ¦ Vérifier en une commande
+```code cmd
+whoami /groups | findstr /i "niveau"
+```
+```out
+Étiquette obligatoire\Niveau obligatoire élevé Étiquette         S-1-16-12288
+```
+« Niveau obligatoire élevé » (S-1-16-12288) signifie fenêtre élevée. « Niveau obligatoire moyen » (S-1-16-8192) signifie droits standards.
+!tip Autre test express : `net session`. Dans une fenêtre standard, il répond « Erreur système 5. Accès refusé. ».
+>>> qcm ¦ Une commande répond « Erreur système 5. Accès refusé. ». Quelle est la cause la plus probable ?
++ La fenêtre n’est pas élevée
+* Le nom de la commande est mal orthographié
+* Le réseau est coupé
+* Le disque est plein
+? L’erreur 5 signale un manque de droits. Relance la console avec Ctrl+Maj+Entrée. Une faute de frappe donnerait plutôt « n’est pas reconnu en tant que commande interne ».
+>>> info ¦ Les commandes qui ne pardonnent pas
+```table
+Commande ¦ Effet
+`del /s /q *.*` ¦ supprime tous les fichiers du dossier et des sous-dossiers, sans question
+`rd /s /q dossier` ¦ supprime toute l’arborescence, sans question
+`format D:` ¦ efface le volume D:
+`Remove-Item -Recurse -Force` ¦ l’équivalent PowerShell de `rd /s /q`
+`diskpart` puis `clean` ¦ efface la table de partitions du disque sélectionné
+`Stop-Computer -Force` ¦ éteint sans attendre la fermeture des applications
+```
+Aucune de ces commandes ne passe par la Corbeille.
+>>> info ¦ -WhatIf et -Confirm, le filet de PowerShell
+Les cmdlets qui modifient quelque chose acceptent `-WhatIf` : elles décrivent ce qu’elles **feraient**, sans rien faire.
+```code ps
+Remove-Item C:\Temp\*.tmp -WhatIf
+```
+```out
+WhatIf : Opération « Supprimer le fichier » en cours sur la cible « C:\Temp\~DF8E21.tmp ».
+WhatIf : Opération « Supprimer le fichier » en cours sur la cible « C:\Temp\~DF9A03.tmp ».
+```
+`-Confirm` fait l’inverse : il impose une question avant chaque action.
+>>> type ps ¦ Prévisualise la suppression de tous les fichiers .log de C:\Logs, sans rien supprimer.
+= Remove-Item C:\Logs\*.log -WhatIf ;; Remove-Item -Path C:\Logs\*.log -WhatIf ;; Remove-Item C:\Logs\*.log -wi
+hint: La cmdlet de suppression, le chemin avec le joker, puis le paramètre qui simule.
+```out
+WhatIf : Opération « Supprimer le fichier » en cours sur la cible « C:\Logs\app.log ».
+WhatIf : Opération « Supprimer le fichier » en cours sur la cible « C:\Logs\backup_2026-10-06.log ».
+WhatIf : Opération « Supprimer le fichier » en cours sur la cible « C:\Logs\backup_2026-10-07.log ».
+WhatIf : Opération « Supprimer le fichier » en cours sur la cible « C:\Logs\install.log ».
+```
+? `-WhatIf` est le réflexe à prendre avant toute suppression en masse. Les alias `rm` et `del` fonctionnent aussi.
+>>> qcm ¦ Tu dois supprimer un vieux dossier de profil sur un poste distant. Quel est le bon réflexe ?
++ Vérifier le chemin exact (dir ou -WhatIf), puis supprimer
+* Lancer `rd /s /q` directement pour gagner du temps
+* Utiliser `format` sur le dossier
+* Supprimer d’abord, vérifier ensuite
+? Une faute dans le chemin (un dossier en moins, une variable vide) peut viser le dossier parent. On liste, on relit, puis on supprime.
+>>> info ¦ Le principe du moindre privilège
+N’ouvre une session élevée que pour la tâche qui l’exige, puis referme-la. En entreprise :
+
+- un compte standard pour la bureautique (mail, web) ;
+- un compte d’administration distinct (par exemple `adm.it.tech`) pour l’AD et les serveurs ;
+- jamais de navigation web depuis un compte « Admins du domaine ».
+!it Une pièce jointe piégée ouverte depuis une session « Admins du domaine » peut compromettre tout le domaine.
+
+### LESSON b9 ¦ Trouver de l’aide tout seul ¦ 1 ¦ /?, help, Get-Help, Get-Command, Get-Member : tes cinq bouées.
+>>> info ¦ Dans CMD
+- `commande /?` : l’aide intégrée de presque toutes les commandes (`xcopy /?`, `robocopy /?`).
+- `help` : la liste des commandes internes. `help dir` équivaut à `dir /?`.
+- `where nom` : indique où se trouve un exécutable (`where robocopy`).
+>>> info ¦ Dans PowerShell
+```table
+Commande ¦ Sert à
+`Get-Help Get-Service` ¦ lire l’aide d’une cmdlet
+`Get-Help Get-Service -Examples` ¦ aller directement aux exemples
+`Get-Command *service*` ¦ retrouver une commande dont tu connais un morceau du nom
+`Get-Command -Noun ADUser` ¦ toutes les commandes qui agissent sur un utilisateur AD
+`Get-Service | Get-Member` ¦ lister les propriétés et méthodes d’un objet
+`Update-Help` ¦ télécharger l’aide complète (en administrateur)
+```
+>>> type ps ¦ Affiche des exemples d’utilisation de Get-ADUser.
+= Get-Help Get-ADUser -Examples ;; Get-Help Get-ADUser -Example ;; Get-Help -Name Get-ADUser -Examples
+hint: `Get-Help`, le nom de la cmdlet, puis le paramètre des exemples.
+? `-Examples` est souvent plus utile que l’aide complète : on part d’un exemple et on l’adapte. Les alias `help` et `man` marchent aussi.
+>>> qcm ¦ Tu cherches la cmdlet qui teste un port TCP, mais tu as oublié son nom. Que tapes-tu ?
++ `Get-Command *connection*`
+* `Get-Service port`
+* `Get-Member port`
+* `help /?`
+? `Get-Command` avec des jokers retrouve `Test-Connection` et `Test-NetConnection`. Ensuite : `Get-Help Test-NetConnection -Examples`.
+>>> type ps ¦ Liste toutes les commandes dont le nom contient « Service ».
+= Get-Command *service* ;; Get-Command -Name *service* ;; Get-Command *-Service ;; Get-Command -Noun Service
+```out
+
+CommandType     Name                 Version    Source
+-----------     ----                 -------    ------
+Cmdlet          Get-Service          3.1.0.0    Microsoft.PowerShell.Management
+Cmdlet          New-Service          3.1.0.0    Microsoft.PowerShell.Management
+Cmdlet          Restart-Service      3.1.0.0    Microsoft.PowerShell.Management
+Cmdlet          Set-Service          3.1.0.0    Microsoft.PowerShell.Management
+Cmdlet          Start-Service        3.1.0.0    Microsoft.PowerShell.Management
+Cmdlet          Stop-Service         3.1.0.0    Microsoft.PowerShell.Management
+```
+>>> qcm ¦ À quoi sert `Get-Member` ?
++ À lister les propriétés et méthodes des objets qu’on lui envoie
+* À afficher les membres d’un groupe Active Directory
+* À lister les utilisateurs connectés au poste
+* À ajouter un membre à un groupe local
+? Piège classique : `Get-Member` décrit des objets PowerShell. Pour un groupe AD, c’est `Get-ADGroupMember` ; pour un groupe local, `Get-LocalGroupMember`.

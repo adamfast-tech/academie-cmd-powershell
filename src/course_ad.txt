@@ -1,0 +1,543 @@
+=== ad ¦ Active Directory ¦ ad ¦ Comptes, groupes, ordinateurs et santé du domaine avec le module ActiveDirectory : le quotidien d’un admin de domaine.
+--- Le domaine
+### LESSON a1 ¦ Comprendre Active Directory ¦ 1 ¦ Domaine, contrôleurs, OU, noms distingués, logins et groupes : le vocabulaire indispensable.
+>>> info ¦ À quoi sert AD ?
+**Active Directory** (AD) est l’**annuaire** de l’entreprise : une base centrale qui contient les **utilisateurs**, les **groupes**, les **ordinateurs** et les règles (GPO) d’un **domaine** (ici `contoso.local`).
+- Un compte unique pour se connecter sur **n’importe quel** PC du domaine.
+- Les droits sur les partages, imprimantes et applications sont donnés à des **groupes**.
+- Les **contrôleurs de domaine** (DC : SRV-AD01, SRV-AD02) hébergent l’annuaire, **répliqué** entre eux, et vérifient les mots de passe.
+>>> info ¦ Les unités d’organisation (OU)
+Les objets sont rangés dans des **OU** (**O**rganizational **U**nits), comme des dossiers :
+```out
+contoso.local
+├── Utilisateurs
+│   ├── Comptabilite      (jdupont, jrobert)
+│   ├── RH                (mlefevre)
+│   ├── Reception         (kbenali, cmoreau)
+│   └── …
+├── Groupes               (GG_Compta, DL_Partage_Compta_RW…)
+├── Ordinateurs
+│   ├── Postes            (PC-COMPTA-01, PC-RH-01…)
+│   └── Serveurs          (SRV-FICHIERS, SRV-APP01…)
+├── Comptes de service    (svc_backup)
+├── Desactives
+└── Domain Controllers    (SRV-AD01, SRV-AD02)
+```
+Une OU sert à **appliquer des GPO** et à **déléguer** l’administration (ex. : le support peut réinitialiser les mots de passe de l’OU Utilisateurs, pas des admins).
+>>> info ¦ Le nom distingué (DN)
+Chaque objet a une adresse unique, son **DN** (**D**istinguished **N**ame), qui se lit **de droite à gauche** (du plus large au plus précis) :
+```anatomy ps
+CN=Jean Dupont ¦ str ¦ **C**ommon **N**ame : le nom de l’objet lui-même.
+OU=Comptabilite ¦ path ¦ L’OU qui le contient directement.
+OU=Utilisateurs ¦ path ¦ L’OU parente.
+DC=contoso,DC=local ¦ path ¦ **D**omain **C**omponent : le domaine contoso.local, une étiquette DNS par DC=.
+```
+!tip Lis-le comme une adresse postale écrite à l’envers : nom, rue, ville, pays.
+>>> qcm ¦ Dans `CN=Marie Lefèvre,OU=RH,OU=Utilisateurs,DC=contoso,DC=local`, dans quelle OU se trouve directement Marie ?
++ RH
+* Utilisateurs
+* contoso
+* local
+? Le premier `OU=` après le CN est le conteneur direct.
+>>> order ps ¦ Construis le DN de l’ordinateur PC-RH-01, rangé dans l’OU Postes, elle-même dans l’OU Ordinateurs.
+~ CN=PC-RH-01, ;; OU=Postes, ;; OU=Ordinateurs, ;; DC=contoso, ;; DC=local
+x~ OU=contoso, ;; CN=Ordinateurs,
+? Du plus précis au plus large.
+>>> info ¦ Les noms d’un utilisateur
+```table
+Attribut ¦ Exemple ¦ Usage
+`SamAccountName` ¦ `jdupont` ¦ le **login** historique (`CONTOSO\jdupont`), 20 caractères max
+`UserPrincipalName` (UPN) ¦ `jdupont@contoso.local` ¦ login au format courriel (Microsoft 365 utilise souvent un UPN public)
+`Name` ¦ `Jean Dupont` ¦ le CN, nom affiché dans l’annuaire
+`DisplayName` ¦ `Jean Dupont` ¦ nom affiché dans Outlook, Teams…
+`SID` ¦ `S-1-5-21-…-1101` ¦ identifiant de sécurité **unique et définitif** : c’est lui qui porte les droits
+`ObjectGUID` ¦ `e00ae615-…` ¦ identifiant unique de l’objet dans l’annuaire
+```
+!warn Supprimer puis recréer un compte avec le même login crée un **nouveau SID** : l’utilisateur perd tous ses droits sur les dossiers. D’où la règle : on **désactive** les comptes, on ne les supprime pas tout de suite.
+>>> qcm ¦ Un compte supprimé par erreur est recréé à l’identique (même nom, même login). Pourquoi l’utilisateur n’a-t-il plus accès à ses dossiers ?
++ Le nouveau compte a un SID différent, et les droits NTFS sont accordés au SID
+* Le mot de passe est différent
+* Il faut redémarrer le serveur de fichiers
+* Le DN a changé
+? Les ACL stockent des SID, pas des noms. (La corbeille AD, si elle est activée, permet de **restaurer** le compte d’origine avec son SID.)
+>>> info ¦ Les groupes : type et portée
+**Type** :
+- **Sécurité** : sert à donner des droits (et peut recevoir des mails).
+- **Distribution** : liste de diffusion uniquement, aucun droit.
+
+**Portée** :
+```table
+Portée ¦ Préfixe chez Contoso ¦ Contient ¦ Sert à
+**Globale** (Global) ¦ `GG_` ¦ des utilisateurs du **même domaine** ¦ regrouper les personnes par **métier** (GG_Compta)
+**Locale de domaine** (DomainLocal) ¦ `DL_` ¦ des groupes globaux, des utilisateurs ¦ porter un **droit** sur une ressource (DL_Partage_Compta_RW)
+**Universelle** ¦ `GU_` ¦ groupes et comptes de toute la forêt ¦ forêts à plusieurs domaines
+```
+>>> info ¦ La méthode AGDLP
+Bonne pratique Microsoft : **A**ccounts → **G**lobal → **D**omain **L**ocal → **P**ermissions.
+```out
+jdupont, jrobert  ──►  GG_Compta  ──►  DL_Partage_Compta_RW  ──►  Modifier sur \\SRV-FICHIERS\Compta
+(comptes)              (métier)        (droit sur la ressource)      (permission NTFS/partage)
+```
+- Les droits ne sont **jamais** donnés directement à un utilisateur.
+- Nouveau comptable ? On l’ajoute à **GG_Compta** : il obtient d’un coup tous les accès de son métier.
+- Nouvelle ressource pour la Compta ? On crée un groupe DL, on y met GG_Compta, on lui donne le droit.
+>>> qcm ¦ La Direction doit aussi pouvoir modifier le partage Compta. Que fais-tu selon AGDLP ?
++ Ajouter le groupe GG_Direction dans DL_Partage_Compta_RW
+* Ajouter chaque directeur dans les droits NTFS du dossier
+* Ajouter GG_Compta dans GG_Direction
+* Créer un compte partagé « direction »
+? Le groupe métier (G) entre dans le groupe de ressource (DL). C’est d’ailleurs déjà le cas chez Contoso.
+
+### LESSON a2 ¦ Interroger l’annuaire : Get-ADUser ¦ 2 ¦ -Identity ou -Filter, -Properties, -SearchBase : trouver n’importe qui en une ligne.
+>>> info ¦ Le module ActiveDirectory
+Toutes les cmdlets AD commencent par **`AD`** après le verbe : `Get-ADUser`, `Get-ADGroup`, `Get-ADComputer`, `Unlock-ADAccount`… Elles viennent du module **ActiveDirectory** (RSAT) et parlent aux DC via les **services web AD** (port 9389) : pas besoin de WinRM.
+```code ps
+Get-ADUser jdupont
+```
+```out
+
+DistinguishedName : CN=Jean Dupont,OU=Comptabilite,OU=Utilisateurs,DC=contoso,DC=local
+Enabled           : True
+GivenName         : Jean
+Name              : Jean Dupont
+ObjectClass       : user
+SamAccountName    : jdupont
+SID               : S-1-5-21-3623811015-3361044348-30300820-1101
+Surname           : Dupont
+UserPrincipalName : jdupont@contoso.local
+```
+Seules une dizaine de propriétés sont renvoyées **par défaut**.
+>>> info ¦ -Identity : un seul objet, désigné précisément
+`-Identity` (positionnel) accepte : le **SamAccountName**, le **DN**, le **SID** ou le **GUID**. Pas le nom complet !
+```code ps
+Get-ADUser 'Marie Lefèvre'
+```
+```out
+Get-ADUser : Impossible de trouver un objet avec l’identité « Marie Lefèvre » sous : « DC=contoso,DC=local ».
+```
+Pour chercher par nom, on utilise **`-Filter`**.
+>>> qcm ¦ Lequel de ces appels fonctionne ?
++ `Get-ADUser mlefevre`
+* `Get-ADUser 'Marie Lefèvre'`
+* `Get-ADUser mlefevre@contoso-hotels.com`
+* `Get-ADUser Lefèvre`
+? Identity = sam, DN, SID ou GUID. Pour le reste : `-Filter`.
+>>> info ¦ -Filter : chercher
+La syntaxe ressemble à PowerShell, **entre guillemets** :
+```code ps
+Get-ADUser -Filter "Surname -eq 'Lefèvre'"
+Get-ADUser -Filter "Name -like 'Jul*'"
+Get-ADUser -Filter "Department -eq 'Comptabilité' -and Enabled -eq 'True'"
+Get-ADUser -Filter *
+```
+- Opérateurs : `-eq -ne -like -notlike -gt -lt -ge -le -and -or`. Pas de `-match`.
+- Guillemets **doubles** autour du filtre, **simples** autour des valeurs.
+- Une variable dans le filtre : `"SamAccountName -eq '$login'"`.
+!tip `-LDAPFilter "(&(objectClass=user)(department=RH))"` existe aussi : syntaxe LDAP brute, utile pour des requêtes reprises d’autres outils.
+>>> type ps ¦ Trouve les utilisateurs dont le nom de famille commence par « Ber ».
+= Get-ADUser -Filter "Surname -like 'Ber*'" ;; Get-ADUser -Filter 'Surname -like "Ber*"' ;; Get-ADUser -Filter {Surname -like 'Ber*'} ;; Get-ADUser -Filter "Surname -like 'ber*'" ;; Get-ADUser -Filter "Name -like '* Ber*'"
+hint: `-Filter "Surname -like 'Ber*'"`
+>>> info ¦ -Properties : demander plus
+Les attributs hors liste par défaut (service, téléphone, dernière connexion…) doivent être **demandés** :
+```code ps
+Get-ADUser mlefevre -Properties Department, Title, LastLogonDate, LockedOut, PasswordLastSet
+Get-ADUser mlefevre -Properties *
+```
+```table
+Propriété ¦ Contenu
+`Department`, `Title`, `Office`, `Manager` ¦ fiche RH
+`EmailAddress`, `telephoneNumber` ¦ contact
+`LastLogonDate` ¦ dernière connexion (précise à ~14 jours près, répliquée)
+`PasswordLastSet`, `PasswordExpired`, `PasswordNeverExpires` ¦ mot de passe
+`LockedOut`, `BadLogonCount`, `LastBadPasswordAttempt` ¦ verrouillage
+`MemberOf` ¦ groupes **directs** (DN)
+`whenCreated` ¦ date de création
+```
+!warn `-Properties *` sur tout l’annuaire est très lent : demande seulement ce dont tu as besoin.
+>>> fill ps ¦ Affiche le service et la date de dernière connexion de Thomas Petit.
+```code ps
+Get-ADUser tpetit ___ Department, LastLogonDate | Select-Object Name, Department, LastLogonDate
+```
+= -Properties
+~ -Property ;; -Select ;; -Filter ;; -Attributes
+? Sans `-Properties`, les deux colonnes seraient vides : les attributs n’auraient pas été demandés au DC.
+>>> info ¦ -SearchBase : limiter à une OU
+```code ps
+Get-ADUser -Filter * -SearchBase 'OU=Reception,OU=Utilisateurs,DC=contoso,DC=local' |
+    Select-Object Name, SamAccountName, Enabled
+```
+`-SearchScope OneLevel` limite au premier niveau (sans les sous-OU).
+>>> type ps ¦ Liste tous les utilisateurs de l’OU RH (DN : OU=RH,OU=Utilisateurs,DC=contoso,DC=local).
+= Get-ADUser -Filter * -SearchBase 'OU=RH,OU=Utilisateurs,DC=contoso,DC=local' ;; Get-ADUser -Filter * -SearchBase "OU=RH,OU=Utilisateurs,DC=contoso,DC=local" ;; Get-ADUser -SearchBase 'OU=RH,OU=Utilisateurs,DC=contoso,DC=local' -Filter * ;; Get-ADUser -SearchBase "OU=RH,OU=Utilisateurs,DC=contoso,DC=local" -Filter *
+>>> order ps ¦ Construis l’export Excel des utilisateurs du service Comptabilité.
+~ Get-ADUser -Filter "Department -eq 'Comptabilité'" -Properties Department, Title ;; | ;; Select-Object Name, SamAccountName, Title ;; | ;; Export-Csv C:\Temp\compta.csv -NoTypeInformation -Delimiter ';' -Encoding UTF8
+x~ Format-Table ;; Where-Object
+? Filtrer **dans** Get-ADUser (le DC fait le tri), choisir les colonnes, exporter.
+
+### LESSON a3 ¦ Verrouillages et mots de passe ¦ 2 ¦ Le ticket n°1 du support : déverrouiller, réinitialiser, comprendre pourquoi ça recommence.
+>>> info ¦ Pourquoi un compte se verrouille
+La **stratégie de mot de passe** du domaine fixe un **seuil** : après N mauvais mots de passe dans une fenêtre de temps, le compte est verrouillé pendant une durée donnée.
+```code ps
+Get-ADDefaultDomainPasswordPolicy
+```
+```out
+
+ComplexityEnabled           : True
+LockoutDuration             : 00:30:00
+LockoutObservationWindow    : 00:30:00
+LockoutThreshold            : 5
+MaxPasswordAge              : 90.00:00:00
+MinPasswordLength           : 12
+PasswordHistoryCount        : 24
+```
+Ici : 5 erreurs en 30 minutes → verrouillé 30 minutes. Mot de passe de 12 caractères minimum, à changer tous les 90 jours, sans réutiliser les 24 derniers.
+>>> info ¦ Trouver et déverrouiller
+```code ps
+Search-ADAccount -LockedOut | Select-Object Name, SamAccountName
+Get-ADUser mlefevre -Properties LockedOut, BadLogonCount, LastBadPasswordAttempt
+Unlock-ADAccount mlefevre
+```
+```out
+
+Name          SamAccountName
+----          --------------
+Marie Lefèvre mlefevre
+```
+!it Avant de déverrouiller, **vérifie l’identité** de la personne qui appelle (procédure interne : rappel sur le numéro de l’annuaire, question au responsable…). Un faux appel au support est une technique d’intrusion classique.
+>>> type ps ¦ Déverrouille le compte de Marie Lefèvre (login mlefevre).
+= Unlock-ADAccount mlefevre ;; Unlock-ADAccount -Identity mlefevre ;; Get-ADUser mlefevre | Unlock-ADAccount ;; Search-ADAccount -LockedOut | Unlock-ADAccount
+? Aucun message en cas de succès : c’est normal en PowerShell. Vérifie avec `Get-ADUser mlefevre -Properties LockedOut`.
+>>> info ¦ Réinitialiser un mot de passe
+```code ps
+Set-ADAccountPassword mlefevre -Reset -NewPassword (Read-Host 'Nouveau mot de passe' -AsSecureString)
+Set-ADUser mlefevre -ChangePasswordAtLogon $true
+```
+```anatomy ps
+Set-ADAccountPassword ¦ cmd ¦ Change le mot de passe d’un compte.
+-Reset ¦ sw ¦ **Réinitialisation** par un admin : l’ancien mot de passe n’est pas demandé.
+-NewPassword ¦ param ¦ Attend une **SecureString**, jamais du texte en clair.
+Read-Host -AsSecureString ¦ cmd ¦ Saisie masquée (étoiles), directement convertie en SecureString.
+-ChangePasswordAtLogon $true ¦ param ¦ L’utilisateur devra choisir **son** mot de passe à la prochaine connexion.
+```
+!warn Ne laisse jamais un mot de passe en clair dans un script, un ticket ou un mail. Communique le mot de passe provisoire par un canal séparé (téléphone, SMS), et force le changement.
+>>> fill ps ¦ Oblige Emma Roux (eroux) à changer son mot de passe à la prochaine ouverture de session.
+```code ps
+Set-ADUser eroux ___ $true
+```
+= -ChangePasswordAtLogon
+~ -PasswordNeverExpires ;; -Reset ;; -CannotChangePassword ;; -Enabled
+? À la prochaine ouverture de session, Windows lui demandera de choisir un nouveau mot de passe.
+>>> qcm ¦ Pourquoi `Set-ADAccountPassword mlefevre -Reset -NewPassword 'Hotel2026!Nice'` échoue-t-il ?
++ -NewPassword exige une SecureString, pas un texte
+* Le mot de passe est trop court
+* Il manque -Identity
+* Il faut d’abord désactiver le compte
+? Protection volontaire : le texte en clair resterait dans l’historique. `ConvertTo-SecureString 'texte' -AsPlainText -Force` existe, mais garde-le pour les cas où il n’y a pas d’alternative.
+>>> info ¦ Ça se reverrouille : trouver l’origine
+Le compte se verrouille à nouveau 10 minutes après ? Un appareil essaie **encore l’ancien mot de passe** :
+- un téléphone avec la messagerie configurée ;
+- une session ouverte sur un autre PC (ou une session RDP déconnectée) ;
+- un lecteur réseau mappé ou une tâche planifiée avec identifiants enregistrés ;
+- des identifiants enregistrés dans le Gestionnaire d’identification (`cmdkey /list`).
+
+L’événement **4740** sur l’émulateur PDC donne le poste source :
+```code ps
+$pdc = (Get-ADDomain).PDCEmulator
+Get-WinEvent -ComputerName $pdc -FilterHashtable @{ LogName='Security'; Id=4740 } -MaxEvents 10 |
+    Where-Object { $_.Properties[0].Value -eq 'mlefevre' } |
+    Select-Object TimeCreated, @{N='Poste source'; E={ $_.Properties[1].Value }}
+```
+>>> type ps ¦ Affiche le nom du contrôleur qui détient le rôle d’émulateur PDC.
+= (Get-ADDomain).PDCEmulator ;; Get-ADDomain | Select-Object PDCEmulator ;; Get-ADDomain | Select-Object -ExpandProperty PDCEmulator ;; netdom query fsmo
+```out
+SRV-AD01.contoso.local
+```
+? Les mauvais mots de passe sont toujours retransmis au PDC : c’est donc lui qui voit et consigne tous les verrouillages.
+>>> qcm ¦ L’événement 4740 indique `Poste source : PC-RECEP-02` pour Marie, qui travaille aux RH. Que fais-tu ?
++ Chercher sur PC-RECEP-02 une session, un lecteur ou des identifiants enregistrés avec son compte
+* Désactiver le compte de Marie
+* Réinstaller le poste de Marie
+* Augmenter le seuil de verrouillage du domaine
+? Un remplacement à l’accueil il y a quelques semaines ? Sa session ou ses identifiants y traînent encore avec l’ancien mot de passe.
+
+### LESSON a4 ¦ Groupes et appartenances ¦ 2 ¦ Qui est dans quel groupe, ajouter, retirer, et vérifier les accès hérités.
+>>> info ¦ Lire les groupes
+```table
+Cmdlet ¦ Question
+`Get-ADGroup GG_Compta -Properties Description, Members` ¦ que contient ce groupe ? (membres directs, en DN)
+`Get-ADGroupMember GG_Compta` ¦ qui en est membre ?
+`Get-ADGroupMember DL_Partage_Compta_RW -Recursive` ¦ qui en est membre, **y compris via des groupes imbriqués** ?
+`Get-ADPrincipalGroupMembership jdupont` ¦ de quels groupes cet utilisateur est-il membre ?
+```
+>>> type ps ¦ Liste toutes les personnes qui ont réellement accès au partage Compta (groupe DL_Partage_Compta_RW, imbrications comprises).
+= Get-ADGroupMember DL_Partage_Compta_RW -Recursive ;; Get-ADGroupMember -Identity DL_Partage_Compta_RW -Recursive ;; Get-ADGroupMember DL_Partage_Compta_RW -Recursive | Select-Object Name ;; Get-ADGroupMember -Identity DL_Partage_Compta_RW -Recursive | Select-Object Name
+```out
+
+name
+----
+Jean Dupont
+Julie Robert
+Sophie Martin
+```
+? Sans `-Recursive`, tu verrais GG_Compta et GG_Direction (les groupes), pas les personnes.
+>>> info ¦ Ajouter et retirer
+```code ps
+Add-ADGroupMember GG_Compta -Members mfaure
+Remove-ADGroupMember GG_VPN -Members eroux -Confirm:$false
+Add-ADPrincipalGroupMembership mfaure -MemberOf GG_Compta, GG_VPN
+```
+- `Add-ADGroupMember` : **un** groupe, plusieurs membres.
+- `Add-ADPrincipalGroupMembership` : **un** membre, plusieurs groupes.
+- `-Confirm:$false` supprime la question de confirmation (à utiliser en connaissance de cause).
+!tip L’utilisateur doit **rouvrir sa session** (ou `klist purge` pour les accès réseau) pour que le nouveau groupe soit pris en compte.
+>>> fill ps ¦ Ajoute Lucas Bernard (lbernard) au groupe GG_VPN.
+```code ps
+___ GG_VPN -Members ___
+```
+= Add-ADGroupMember ;; lbernard
+~ Add-ADPrincipalGroupMembership ;; Set-ADGroup ;; Lucas Bernard ;; GG_IT
+? `lbernard` est d’ailleurs déjà membre : la commande ne crée pas de doublon.
+>>> info ¦ « Mêmes droits que son collègue »
+Demande fréquente : « Donne à Maxime les mêmes accès que Jean ». On lit les groupes de Jean et on les applique à Maxime, en **vérifiant d’abord** :
+```code ps
+$groupes = Get-ADPrincipalGroupMembership jdupont | Where-Object Name -ne 'Utilisateurs du domaine'
+$groupes | Select-Object Name
+$groupes | ForEach-Object { Add-ADGroupMember $_ -Members mfaure -WhatIf }
+```
+!warn Copier tous les groupes d’un collègue peut transmettre des droits **exceptionnels** qu’il a reçus pour un projet. Fais valider la liste par le responsable : c’est le principe du **moindre privilège**.
+>>> qcm ¦ Pourquoi afficher la liste avec `$groupes | Select-Object Name` avant d’ajouter ?
++ Pour vérifier qu’aucun groupe à privilèges ou exceptionnel ne sera copié
+* Parce que Add-ADGroupMember exige un affichage préalable
+* Pour accélérer la commande
+* Ce n’est pas utile
+? Un `-WhatIf` puis une validation humaine évitent de donner par erreur l’accès à « Admins du domaine » ou à la paie.
+>>> type ps ¦ Liste les groupes dont Jean Dupont (jdupont) est membre.
+= Get-ADPrincipalGroupMembership jdupont ;; Get-ADPrincipalGroupMembership -Identity jdupont ;; Get-ADPrincipalGroupMembership jdupont | Select-Object Name ;; (Get-ADUser jdupont -Properties MemberOf).MemberOf ;; Get-ADUser jdupont -Properties MemberOf | Select-Object -ExpandProperty MemberOf
+? `MemberOf` ne montre pas le **groupe principal** (Utilisateurs du domaine) ; Get-ADPrincipalGroupMembership, si.
+
+--- Gérer le cycle de vie
+### LESSON a5 ¦ Créer des comptes en masse depuis un CSV ¦ 3 ¦ L’arrivée de trois saisonniers en une seule commande, proprement.
+>>> info ¦ Le fichier fourni par les RH
+```code cmd
+type C:\Data\utilisateurs_a_creer.csv
+```
+```out
+Prenom;Nom;Login;Service;Titre;OU
+Léa;Durand;ldurand;Réception;Réceptionniste;OU=Reception,OU=Utilisateurs,DC=contoso,DC=local
+Maxime;Faure;mfaure;Comptabilité;Comptable;OU=Comptabilite,OU=Utilisateurs,DC=contoso,DC=local
+Inès;Blanc;iblanc;Spa;Praticienne;OU=Spa,OU=Utilisateurs,DC=contoso,DC=local
+```
+Chaque ligne deviendra un objet avec les propriétés `Prenom`, `Nom`, `Login`… grâce à `Import-Csv`.
+>>> info ¦ New-ADUser : les paramètres essentiels
+```code ps
+New-ADUser -Name 'Léa Durand' -GivenName 'Léa' -Surname 'Durand' `
+    -SamAccountName 'ldurand' -UserPrincipalName 'ldurand@contoso.local' `
+    -Department 'Réception' -Title 'Réceptionniste' `
+    -Path 'OU=Reception,OU=Utilisateurs,DC=contoso,DC=local' `
+    -AccountPassword $mdp -ChangePasswordAtLogon $true -Enabled $true
+```
+```anatomy ps
+-Name ¦ param ¦ Le CN : nom de l’objet dans l’OU (doit y être unique).
+-SamAccountName ¦ param ¦ Le login (unique dans le domaine).
+-UserPrincipalName ¦ param ¦ Le login au format courriel.
+-Path ¦ param ¦ Le DN de l’OU de destination. Sans lui : le conteneur par défaut « Users ».
+-AccountPassword ¦ param ¦ Mot de passe provisoire, en SecureString.
+-Enabled $true ¦ param ¦ Sans cela, le compte est créé **désactivé** (et sans mot de passe, il ne peut pas être activé).
+` ¦ op ¦ L’**accent grave** en fin de ligne : la commande continue à la ligne suivante.
+```
+!warn L’accent grave de continuation doit être le **tout dernier caractère** de la ligne : un espace après lui casse la commande. Le splatting (`@params`) est une alternative plus sûre.
+>>> qcm ¦ Un compte créé avec New-ADUser sans -Enabled apparaît avec une flèche vers le bas dans la console. Pourquoi ?
++ Par défaut, New-ADUser crée le compte désactivé
+* Le mot de passe a expiré
+* L’OU n’existe pas
+* Le compte est verrouillé
+? Sécurité par défaut. `-Enabled $true` (avec un mot de passe conforme) ou `Enable-ADAccount` ensuite.
+>>> info ¦ Le script complet
+```script ps C:\Scripts\creer_utilisateurs.ps1
+$mdp = Read-Host 'Mot de passe provisoire' -AsSecureString
+$liste = Import-Csv C:\Data\utilisateurs_a_creer.csv -Delimiter ';' -Encoding UTF8
+
+foreach ($u in $liste) {
+    if (Get-ADUser -Filter "SamAccountName -eq '$($u.Login)'") {
+        Write-Warning "$($u.Login) existe déjà : ignoré"
+        continue
+    }
+    $params = @{
+        Name                  = "$($u.Prenom) $($u.Nom)"
+        GivenName             = $u.Prenom
+        Surname               = $u.Nom
+        SamAccountName        = $u.Login
+        UserPrincipalName     = "$($u.Login)@contoso.local"
+        Department            = $u.Service
+        Title                 = $u.Titre
+        Path                  = $u.OU
+        AccountPassword       = $mdp
+        ChangePasswordAtLogon = $true
+        Enabled               = $true
+    }
+    New-ADUser @params -WhatIf
+    Write-Host "Créé : $($u.Login)" -ForegroundColor Green
+}
+```
+- Vérifie d’abord que le login n’existe pas (`continue` passe au suivant).
+- Splatting : lisible, et une clé par paramètre.
+- `-WhatIf` au premier passage ; on l’enlève quand le résultat est validé.
+>>> fill ps ¦ Complète la ligne qui lit le CSV des RH.
+```code ps
+$liste = ___ C:\Data\utilisateurs_a_creer.csv -Delimiter ___ -Encoding UTF8
+```
+= Import-Csv ;; ';'
+~ Get-Content ;; Export-Csv ;; ',' ;; '\t'
+? `Import-Csv` transforme chaque ligne en objet ; le fichier des RH est séparé par des points-virgules.
+>>> type ps ¦ Teste la création en simulation : importe le CSV et passe chaque ligne à New-ADUser avec -WhatIf (Name = Prénom Nom, SamAccountName = Login, Path = OU).
+= Import-Csv C:\Data\utilisateurs_a_creer.csv -Delimiter ';' | ForEach-Object { New-ADUser -Name "$($_.Prenom) $($_.Nom)" -SamAccountName $_.Login -Path $_.OU -WhatIf }
+=~ ^import-csv\s+["']?C:\\Data\\utilisateurs_a_creer\.csv["']?\s+(-Delimiter\s+["'];["']|-UseCulture)(\s+-Encoding\s+UTF8)?\s*\|\s*(ForEach-Object|foreach|%)\s*\{.*New-ADUser\b.*-SamAccountName\s+\$_\.Login.*-WhatIf.*\}\s*$
+hint: `Import-Csv … -Delimiter ';' | ForEach-Object { New-ADUser -Name "$($_.Prenom) $($_.Nom)" -SamAccountName $_.Login -Path $_.OU -WhatIf }`
+sol: Import-Csv C:\Data\utilisateurs_a_creer.csv -Delimiter ';' | ForEach-Object { New-ADUser -Name "$($_.Prenom) $($_.Nom)" -SamAccountName $_.Login -Path $_.OU -WhatIf }
+>>> info ¦ Les accents dans les logins
+Le RH a fourni les logins ici. Quand tu dois les **générer**, retire les accents (un login `iblanc` plutôt que `ïblanc`) :
+```code ps
+function Remove-Accent([string]$Texte) {
+    $n = $Texte.Normalize([Text.NormalizationForm]::FormD)
+    -join ($n.ToCharArray() | Where-Object { [Globalization.CharUnicodeInfo]::GetUnicodeCategory($_) -ne 'NonSpacingMark' })
+}
+(Remove-Accent ('Léa'.Substring(0,1) + 'Lefèvre')).ToLower()
+```
+```out
+llefevre
+```
+!tip La décomposition « FormD » sépare chaque lettre de son accent (é = e + ́ ) ; on garde les lettres et on jette les accents.
+
+### LESSON a6 ¦ Départs et nettoyage du parc ¦ 3 ¦ Désactiver, déplacer, trouver les comptes et ordinateurs inactifs, réparer la relation de confiance.
+>>> info ¦ La procédure de départ
+Le jour du départ d’un collaborateur :
+- ① **Désactiver** le compte (pas supprimer).
+- ② Noter la date et le motif dans la **description**.
+- ③ **Retirer** des groupes sensibles (VPN, applications).
+- ④ **Déplacer** vers l’OU `Desactives` (où une GPO restrictive s’applique).
+- ⑤ Après la durée de conservation définie (30, 90 jours…), supprimer.
+```code ps
+Disable-ADAccount cmoreau
+Set-ADUser cmoreau -Description "Départ le 23/08/2026 - ticket 4512"
+Get-ADUser cmoreau | Move-ADObject -TargetPath 'OU=Desactives,DC=contoso,DC=local'
+```
+>>> type ps ¦ Désactive le compte de Thomas Petit (tpetit).
+= Disable-ADAccount tpetit ;; Disable-ADAccount -Identity tpetit ;; Get-ADUser tpetit | Disable-ADAccount ;; Set-ADUser tpetit -Enabled $false
+>>> fill ps ¦ Déplace le compte désactivé dans l’OU Desactives.
+```code ps
+Get-ADUser tpetit | ___ -TargetPath '___'
+```
+= Move-ADObject ;; OU=Desactives,DC=contoso,DC=local
+~ Move-Item ;; Set-ADUser ;; CN=Desactives,DC=contoso,DC=local ;; Desactives
+? `-TargetPath` attend le **DN complet** de l’OU.
+>>> info ¦ Trouver les inactifs
+```code ps
+Search-ADAccount -AccountInactive -TimeSpan 90.00:00:00 -UsersOnly |
+    Where-Object Enabled | Select-Object Name, LastLogonDate
+```
+```out
+
+Name           LastLogonDate
+----           -------------
+Thomas Petit   02/06/2026 07:30:00
+Nicolas Girard 05/07/2026 10:11:00
+```
+- `-TimeSpan 90.00:00:00` = 90 jours (format jours.heures:minutes:secondes).
+- `-UsersOnly` / `-ComputersOnly`.
+- Autres recherches : `-AccountDisabled`, `-AccountExpired`, `-PasswordExpired`, `-PasswordNeverExpires`, `-LockedOut`.
+!warn **Ne désactive pas en masse** sans vérifier : un chef de cuisine en congé longue durée, un saisonnier qui revient en avril… Croise avec les RH.
+>>> type ps ¦ Liste les comptes d’ordinateurs sans connexion depuis 90 jours.
+= Search-ADAccount -AccountInactive -TimeSpan 90.00:00:00 -ComputersOnly ;; Search-ADAccount -ComputersOnly -AccountInactive -TimeSpan 90.00:00:00 ;; Search-ADAccount -AccountInactive -ComputersOnly -TimeSpan 90.00:00:00 ;; Search-ADAccount -AccountInactive -TimeSpan 90 -ComputersOnly ;; Search-ADAccount -AccountInactive -TimeSpan (New-TimeSpan -Days 90) -ComputersOnly
+>>> info ¦ Ordinateurs : inventaire depuis l’annuaire
+```code ps
+Get-ADComputer -Filter * -Properties OperatingSystem, LastLogonDate |
+    Group-Object OperatingSystem -NoElement
+Get-ADComputer -Filter "OperatingSystem -like '*Windows 10*'" -Properties OperatingSystem |
+    Select-Object Name, OperatingSystem
+```
+!it Fin de support de Windows 10 : la seconde commande te donne la liste des postes à migrer, sans faire le tour des bureaux.
+>>> info ¦ « La relation d’approbation a échoué »
+Message à l’ouverture de session : *La relation d’approbation entre cette station de travail et le domaine principal a échoué.* Le mot de passe du **compte ordinateur** ne correspond plus (poste restauré, longtemps éteint, cloné…).
+```code ps
+Test-ComputerSecureChannel
+Test-ComputerSecureChannel -Repair -Credential CONTOSO\it.tech
+```
+- Se connecter **localement** au poste (compte admin local), puis lancer la réparation en administrateur.
+- Équivalent CMD : `nltest /sc_reset:contoso.local`.
+- Évite le réflexe « sortir du domaine et rejoindre » qui recrée un compte ordinateur et perd ses groupes.
+>>> qcm ¦ Que vérifie `Test-ComputerSecureChannel` ?
++ Que le canal sécurisé entre le poste et le domaine (mot de passe du compte ordinateur) fonctionne
+* Que le pare-feu est actif
+* Que le certificat HTTPS est valide
+* Que l’utilisateur a un mot de passe fort
+? Résultat `True` = tout va bien. `-Repair` resynchronise le mot de passe du compte ordinateur.
+
+### LESSON a7 ¦ Santé du domaine ¦ 4 ¦ dcdiag, repadmin, rôles FSMO : vérifier que les contrôleurs vont bien.
+>>> info ¦ Pourquoi surveiller les DC ?
+Si les contrôleurs de domaine vont mal, tout va mal : ouvertures de session lentes, GPO non appliquées, mots de passe changés « qui ne marchent pas sur l’autre site »… Trois vérifications régulières :
+- **dcdiag** : santé de chaque DC (services, DNS, partages SYSVOL/NETLOGON…).
+- **repadmin** : la **réplication** entre DC.
+- **netdom / Get-ADDomain** : qui détient les rôles **FSMO**.
+>>> info ¦ dcdiag
+```code cmd
+dcdiag /s:SRV-AD01 /q
+dcdiag /test:dns /v
+```
+```table
+Commutateur ¦ Signification
+`/s:SRV-AD01` ¦ **s**erveur à tester
+`/q` ¦ **q**uiet : n’affiche que les erreurs (aucune sortie = tout va bien)
+`/v` ¦ **v**erbose : détaillé
+`/test:dns` ¦ un test précis (dns, replications, netlogons, services…)
+`/e` ¦ **e**nterprise : tous les DC de la forêt
+`/c` ¦ **c**omprehensive : tous les tests
+```
+>>> type cmd ¦ Lance un diagnostic de SRV-AD01 en n’affichant que les erreurs.
+= dcdiag /s:SRV-AD01 /q ;; dcdiag /q /s:SRV-AD01 ;; dcdiag /s:srv-ad01 /q ;; dcdiag /q /s:srv-ad01
+>>> info ¦ repadmin
+```code cmd
+repadmin /replsummary
+repadmin /showrepl SRV-AD02
+repadmin /syncall /AdeP
+```
+- `/replsummary` : tableau de synthèse ; colonne « échecs/total » et « plus grand delta » (temps depuis la dernière réplication réussie).
+- `/showrepl` : détail par partition et par partenaire.
+- `/syncall /AdeP` : force la réplication de **A**ll partitions, en **d**N, à l’échelle de l’**e**ntreprise, en mode **P**ush.
+!it « J’ai changé mon mot de passe mais à l’hôtel annexe il ne marche pas » : vérifie la réplication entre les DC des deux sites.
+>>> qcm ¦ `repadmin /replsummary` affiche « plus grand delta : 12 j » pour SRV-AD02. Que cela signifie-t-il ?
++ SRV-AD02 n’a pas répliqué avec succès depuis 12 jours : il faut investiguer
+* SRV-AD02 a 12 jours d’uptime
+* Tout est normal
+* 12 objets attendent
+? Au-delà de la durée de vie des objets supprimés (180 jours), un DC peut même réintroduire des objets supprimés. On corrige vite.
+>>> info ¦ Les rôles FSMO
+Cinq rôles **uniques** (**F**lexible **S**ingle **M**aster **O**perations) sont tenus chacun par un seul DC :
+```table
+Rôle ¦ Portée ¦ Rôle concret
+Contrôleur de schéma ¦ forêt ¦ modifications du schéma AD
+Maître d’attribution de noms ¦ forêt ¦ ajout/suppression de domaines
+**Émulateur PDC** ¦ domaine ¦ heure de référence, verrouillages, mots de passe récents
+Maître RID ¦ domaine ¦ distribue les blocs d’identifiants (SID) aux DC
+Maître d’infrastructure ¦ domaine ¦ références entre domaines
+```
+```code ps
+netdom query fsmo
+Get-ADDomain | Select-Object PDCEmulator, RIDMaster, InfrastructureMaster
+Get-ADForest | Select-Object SchemaMaster, DomainNamingMaster
+```
+>>> type ps ¦ Liste tous les contrôleurs de domaine avec leur site.
+= Get-ADDomainController -Filter * | Select-Object Name, Site ;; Get-ADDomainController -Filter * | Select-Object HostName, Site ;; Get-ADDomainController -Filter * ;; Get-ADDomainController -Filter * | Select-Object Name, IPv4Address, Site ;; Get-ADDomainController -Filter * | Format-Table Name, Site
+>>> qcm ¦ Quel rôle FSMO sert de référence horaire pour tout le domaine ?
++ L’émulateur PDC
+* Le maître RID
+* Le contrôleur de schéma
+* Le maître d’infrastructure
+? L’émulateur PDC du domaine racine se synchronise sur une source externe ; tous les autres s’alignent en cascade. Kerberos tolère 5 minutes d’écart.
+>>> info ¦ Bilan de la piste Active Directory
+- Vocabulaire : domaine, DC, OU, DN, SID, groupes et AGDLP.
+- Requêtes : `-Identity` vs `-Filter`, `-Properties`, `-SearchBase`.
+- Support : verrouillages (4740 sur le PDC), réinitialisations sécurisées.
+- Cycle de vie : création en masse, départs, inactifs, relation d’approbation.
+- Santé : dcdiag, repadmin, FSMO.
+
+!tip Passe maintenant aux **Tickets** : des situations réelles où tu combineras CMD, PowerShell et AD.

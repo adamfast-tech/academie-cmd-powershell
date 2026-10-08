@@ -1,0 +1,1288 @@
+--- Système et parc
+### LESSON c14 ¦ Identifier un poste et sa session ¦ 1 ¦ hostname, whoami, systeminfo, variables d’environnement : la carte d’identité d’un PC.
+>>> info ¦ Les premières questions d’un ticket
+Quand un utilisateur appelle, tu dois savoir **sur quel PC** il est, **sous quel compte**, et **quel Windows** il utilise. Quatre réflexes :
+- `hostname` : le nom de l’ordinateur.
+- `whoami` : le compte connecté, sous la forme `DOMAINE\utilisateur`.
+- `systeminfo` : la fiche complète (OS, modèle, mémoire, domaine, correctifs…).
+- `echo %COMPUTERNAME%` : la même info, lue dans une **variable d’environnement**.
+```code cmd
+hostname
+whoami
+```
+```out
+PC-IT-01
+contoso\it.tech
+```
+!it Demande au téléphone « Tapez Windows + R, puis `cmd`, puis `hostname` » : tu obtiens le nom exact du poste en 20 secondes, sans étiquette à chercher sous le bureau.
+>>> info ¦ whoami et ses commutateurs
+```anatomy cmd
+whoami ¦ cmd ¦ « **Who am I** ? » : qui suis-je ?
+/upn ¦ sw ¦ **U**ser **P**rincipal **N**ame : le format courriel `it.tech@contoso.local`.
+```
+```table
+Commutateur ¦ Ce qu’il affiche
+`/upn` ¦ le nom au format UPN (**U**ser **P**rincipal **N**ame)
+`/fqdn` ¦ le nom distingué complet dans l’annuaire (**F**ully **Q**ualified **D**omain **N**ame)
+`/groups` ¦ tous les groupes du jeton : utile pour vérifier un droit d’accès
+`/priv` ¦ les privilèges (**priv**ileges) : arrêter le système, changer l’heure…
+`/all` ¦ tout à la fois, avec le SID
+```
+!tip Si un utilisateur vient d’être ajouté à un groupe, `whoami /groups` montre si sa session l’a pris en compte. Sinon : déconnexion/reconnexion (le jeton est créé à l’ouverture de session).
+>>> qcm ¦ Un utilisateur a été ajouté ce matin au groupe GG_Compta mais n’accède toujours pas au partage. Que vérifies-tu avec `whoami /groups` ?
++ Si le groupe figure dans le jeton de sa session actuelle
+* Si le partage existe sur le serveur
+* Si son mot de passe a expiré
+* Si le PC est bien dans le domaine
+? Les groupes sont lus **à l’ouverture de session**. Absent de `whoami /groups` = il doit fermer sa session (ou au minimum `klist purge` pour les accès réseau Kerberos).
+>>> type cmd ¦ Affiche le nom du compte connecté au format UPN.
+= whoami /upn
+```out
+it.tech@contoso.local
+```
+>>> info ¦ systeminfo, et le filtrer
+`systeminfo` affiche une soixantaine de lignes. On le combine avec `findstr` pour aller droit au but :
+```code cmd
+systeminfo | findstr /b /c:"Nom du système" /c:"Modèle" /c:"Mémoire physique totale" /c:"Domaine"
+```
+```out
+Nom du système d’exploitation:              Microsoft Windows 11 Professionnel
+Modèle du système:                          OptiPlex 7010
+Mémoire physique totale:                    16 106 Mo
+Domaine:                                    contoso.local
+```
+```anatomy cmd
+findstr ¦ cmd ¦ **Find Str**ing : cherche du texte.
+/b ¦ sw ¦ **B**eginning : le motif doit être en **début** de ligne.
+/c:"Nom du système" ¦ sw ¦ **C**hercher la chaîne littérale, espaces compris. Répétable pour chercher plusieurs textes.
+```
+!warn Les libellés dépendent de la langue de Windows : sur un poste en anglais, ce serait `/c:"OS Name"`. Pour un script multilingue, préfère PowerShell (propriétés d’objets, identiques partout).
+>>> fill cmd ¦ Garde seulement la ligne de l’heure de démarrage (pour savoir depuis quand le PC n’a pas redémarré).
+```code cmd
+systeminfo ___ findstr /c:"Heure de démarrage"
+```
+= |
+~ > ;; & ;; &&
+? Le pipe `|` envoie la sortie de `systeminfo` à `findstr`. « Vous avez redémarré ? » — la ligne te donne la vraie réponse.
+>>> info ¦ Les variables d’environnement
+Windows tient à jour des **variables** que toute commande peut lire entre `%…%` :
+```table
+Variable ¦ Exemple ¦ Usage au support
+`%COMPUTERNAME%` ¦ PC-IT-01 ¦ nom du poste
+`%USERNAME%` ¦ it.tech ¦ compte connecté
+`%USERDOMAIN%` ¦ CONTOSO ¦ domaine (nom court NetBIOS)
+`%LOGONSERVER%` ¦ \\SRV-AD01 ¦ contrôleur de domaine qui a validé l’ouverture de session
+`%USERPROFILE%` ¦ C:\Users\it.tech ¦ dossier du profil
+`%TEMP%` ¦ …\AppData\Local\Temp ¦ fichiers temporaires de l’utilisateur
+`%SystemRoot%` ¦ C:\Windows ¦ dossier de Windows
+`%PATH%` ¦ C:\Windows\system32;… ¦ dossiers où chercher les programmes
+```
+`set` seul les liste toutes ; `set L` liste celles qui commencent par L.
+>>> type cmd ¦ Affiche le contrôleur de domaine qui a authentifié ta session.
+= echo %LOGONSERVER% ;; echo %logonserver% ;; set logonserver ;; set LOGONSERVER
+```out
+\\SRV-AD01
+```
+? Utile quand « les GPO ne passent pas » sur un site distant : si `%LOGONSERVER%` vaut le nom du PC lui-même, la session a été ouverte **hors ligne** avec des identifiants en cache.
+>>> qcm ¦ `echo %LOGONSERVER%` affiche `\\PC-COMPTA-02`, le nom du poste lui-même. Qu’en déduis-tu ?
++ La session a été ouverte avec des identifiants en cache, sans contacter de contrôleur de domaine
+* Le PC est devenu contrôleur de domaine
+* Le compte est un administrateur du domaine
+* La variable est mal orthographiée
+? Typique d’un portable démarré hors réseau, ou d’un problème réseau/DNS au démarrage. Vérifie la connectivité vers les DC.
+
+### LESSON c15 ¦ Processus : tasklist et taskkill ¦ 2 ¦ Voir ce qui tourne, filtrer, et fermer proprement ou de force, en local comme à distance.
+>>> info ¦ tasklist : la liste des processus
+```code cmd
+tasklist
+```
+```out
+
+Nom de l’image                 PID Nom de la sessio Numéro de s Utilisation
+========================= ======== ================ =========== ============
+System Idle Process              0 Services                   0         8 Ko
+System                           4 Services                   0     1 412 Ko
+OUTLOOK.EXE                   7344 Console                    1   348 168 Ko
+ms-teams.exe                  5888 Console                    1   402 384 Ko
+```
+- **Nom de l’image** : le fichier .exe.
+- **PID** (**P**rocess **ID**entifier) : numéro unique, attribué au lancement, différent à chaque fois.
+- **Session** : 0 = services, 1 et + = utilisateurs connectés.
+- **Utilisation** : mémoire vive occupée.
+>>> info ¦ Les filtres /fi
+```anatomy cmd
+tasklist ¦ cmd ¦ **Task List** : liste des tâches (processus).
+/fi ¦ sw ¦ **FI**lter : applique un filtre.
+"imagename eq outlook.exe" ¦ str ¦ Critère entre guillemets : champ, opérateur, valeur.
+```
+```table
+Opérateur ¦ Signification ¦ Exemple
+`eq` ¦ **eq**ual, égal ¦ `"imagename eq chrome.exe"`
+`ne` ¦ **n**ot **e**qual ¦ `"username ne NT AUTHORITY\SYSTEM"`
+`gt` / `lt` ¦ **g**reater / **l**ess **t**han ¦ `"memusage gt 500000"` (en Ko)
+`ge` / `le` ¦ supérieur ou égal / inférieur ou égal ¦ `"pid ge 1000"`
+```
+Champs utiles : `imagename`, `pid`, `status` (`running`, `not responding`), `username`, `memusage`, `services`, `windowtitle`.
+>>> type cmd ¦ Liste uniquement les programmes qui ne répondent plus.
+= tasklist /fi "status eq not responding" ;; tasklist /FI "STATUS eq NOT RESPONDING" ;; tasklist /fi "STATUS eq not responding"
+hint: Champ `status`, opérateur `eq`, valeur `not responding`, le tout entre guillemets.
+? Les guillemets sont obligatoires : la valeur contient un espace.
+>>> qcm ¦ Que signifie `/fi "memusage gt 500000"` ?
++ Les processus qui utilisent plus de 500 000 Ko (environ 500 Mo)
+* Les 500 000 premiers processus
+* Les processus lancés depuis plus de 500 000 secondes
+* Les processus de moins de 500 Mo
+? `gt` = **g**reater **t**han, et `memusage` s’exprime en kilo-octets.
+>>> info ¦ Autres commutateurs de tasklist
+```table
+Commutateur ¦ Signification
+`/svc` ¦ affiche les **s**er**v**i**c**es hébergés par chaque processus (pratique pour les svchost.exe)
+`/v` ¦ **v**erbose : détaillé (utilisateur, temps processeur, titre de fenêtre)
+`/fo csv` ¦ **f**ormat **o**f output : `table`, `list` ou `csv`
+`/nh` ¦ **n**o **h**eader : sans ligne d’en-tête
+`/s PC` ¦ **s**ystème distant à interroger
+`/m dll` ¦ processus ayant chargé un **m**odule (DLL) donné
+```
+```code cmd
+tasklist /svc /fi "imagename eq svchost.exe"
+```
+```out
+
+Nom de l’image                 PID Services
+========================= ======== ============================================
+svchost.exe                   1088 BrokerInfrastructure, DcomLaunch, PlugPlay, Power
+svchost.exe                   1240 RpcEptMapper, RpcSs
+svchost.exe                   1612 Dnscache
+```
+>>> type cmd ¦ Liste les processus du poste PC-COMPTA-02, à distance.
+= tasklist /s PC-COMPTA-02 ;; tasklist /S PC-COMPTA-02 ;; tasklist /s \\PC-COMPTA-02
+? `tasklist /s` passe par RPC et le partage d’administration, pas par WinRM : il fonctionne sur un parc où PowerShell à distance n’est pas activé. Il faut être administrateur du poste distant et que son pare-feu autorise l’administration à distance.
+>>> info ¦ taskkill : fermer un processus
+```anatomy cmd
+taskkill ¦ cmd ¦ **Task Kill** : met fin à un processus.
+/im ¦ sw ¦ **IM**age name : par nom de fichier (tous les processus de ce nom).
+outlook.exe ¦ arg ¦ L’image visée. Les jokers sont acceptés : `/im ms-*`.
+/f ¦ sw ¦ **F**orce : arrêt immédiat, sans demander à l’application de se fermer.
+/t ¦ sw ¦ **T**ree : tue aussi tous les processus enfants (l’arbre).
+```
+- `/pid 7344` : vise un numéro précis plutôt qu’un nom.
+- Sans `/f`, Windows envoie une demande de fermeture polie : l’application peut proposer « Enregistrer ? ».
+- Avec `/f`, les données non enregistrées sont **perdues**.
+!it Outlook figé chez un utilisateur : `taskkill /im outlook.exe /f`, puis relance. Préviens-le avant : un mail en cours de rédaction disparaîtra.
+>>> fill cmd ¦ Force la fermeture de Teams et de tous ses processus enfants.
+```code cmd
+taskkill /im ms-teams.exe ___ ___
+```
+= /f ;; /t
+~ /s ;; /pid ;; /a
+? `/f` force, `/t` emporte l’arbre des processus enfants. L’ordre des deux commutateurs n’a pas d’importance pour taskkill, mais ici on garde `/f` puis `/t`.
+>>> type cmd ¦ Termine de force le processus dont le PID est 8920.
+= taskkill /pid 8920 /f ;; taskkill /f /pid 8920 ;; taskkill /PID 8920 /F ;; taskkill /F /PID 8920
+```out
+Opération réussie : le processus avec PID 8920 a été terminé.
+```
+>>> qcm ¦ Pourquoi préférer `/pid` à `/im` quand plusieurs utilisateurs sont connectés sur un serveur RDS ?
++ `/im` fermerait le programme de **tous** les utilisateurs, `/pid` un seul processus
+* `/pid` est plus rapide
+* `/im` ne fonctionne pas sur un serveur
+* `/pid` ne nécessite pas de droits administrateur
+? Sur un serveur de bureau à distance, 20 personnes peuvent avoir Excel ouvert : `/im excel.exe /f` les ferait tous. Cible le bon PID (avec `/fi "username eq …"` pour le trouver).
+
+### LESSON c16 ¦ Services : sc et net start ¦ 2 ¦ Interroger, démarrer, arrêter et configurer un service, y compris sur un autre poste.
+>>> info ¦ Un service, deux noms
+Un **service** est un programme qui tourne en arrière-plan, sans fenêtre, souvent avant même l’ouverture de session (impression, mises à jour, antivirus…). Chacun a :
+- un **nom de service** court, sans espace : `Spooler` ;
+- un **nom d’affichage** lisible, traduit : « Spouleur d’impression ».
+
+`sc` attend le nom court. `net start` accepte les deux (avec guillemets si espaces).
+```code cmd
+sc query spooler
+```
+```out
+
+NOM_SERVICE : Spooler
+AFFICHER_NOM : Spouleur d’impression
+        TYPE               : 30  WIN32
+        ÉTAT               : 4  RUNNING
+                                (STOPPABLE, NOT_PAUSABLE, ACCEPTS_SHUTDOWN)
+        WIN32_EXIT_CODE    : 0  (0x0)
+```
+>>> info ¦ sc : Service Control
+```anatomy cmd
+sc ¦ cmd ¦ **S**ervice **C**ontrol : pilote le gestionnaire de services.
+\\PC-COMPTA-02 ¦ path ¦ Optionnel : le poste distant, juste après `sc`.
+query ¦ arg ¦ Sous-commande : état actuel. Autres : `qc`, `start`, `stop`, `config`, `queryex`.
+spooler ¦ arg ¦ Le nom **court** du service.
+```
+```table
+Sous-commande ¦ Rôle
+`query` ¦ état (RUNNING, STOPPED…)
+`queryex` ¦ état **ex**tended : ajoute le PID du processus
+`qc` ¦ **q**uery **c**onfig : type de démarrage, chemin de l’exécutable, compte
+`start` / `stop` ¦ démarrer / arrêter
+`config` ¦ modifier la configuration (type de démarrage…)
+`failure` ¦ actions en cas de plantage (redémarrer automatiquement…)
+```
+>>> info ¦ Le piège de l’espace après =
+Pour changer le type de démarrage, la syntaxe de `sc` est **unique sous Windows** : un espace **après** le signe égal, aucun avant.
+```code cmd
+sc config spooler start= auto
+```
+```anatomy cmd
+config ¦ arg ¦ Modifier la configuration du service.
+spooler ¦ arg ¦ Le service visé.
+start= ¦ param ¦ Le paramètre, signe = **collé** au nom…
+auto ¦ val ¦ …puis un **espace**, puis la valeur.
+```
+```table
+Valeur de start= ¦ Signification
+`auto` ¦ automatique, au démarrage de Windows
+`delayed-auto` ¦ automatique différé (environ 2 minutes après le démarrage)
+`demand` ¦ manuel : démarre à la demande
+`disabled` ¦ désactivé : ne peut pas démarrer
+```
+!warn `sc config spooler start=auto` (sans espace) échoue avec un message de syntaxe. C’est l’erreur n°1 avec sc.
+>>> qcm ¦ Laquelle de ces commandes est correcte ?
++ `sc config wuauserv start= demand`
+* `sc config wuauserv start=demand`
+* `sc config wuauserv start = demand`
+* `sc config wuauserv /start demand`
+? Espace après `=`, aucun avant. `wuauserv` = **W**indows **U**pdate **AU**tomatic update **SERV**ice.
+>>> type cmd ¦ Affiche la configuration (type de démarrage, exécutable, compte) du service Spooler.
+= sc qc spooler ;; sc qc Spooler
+```out
+[SC] QueryServiceConfig réussite(s)
+
+NOM_SERVICE : Spooler
+        TYPE               : 110  WIN32_OWN_PROCESS
+        TYPE_DÉMARRAGE     : 2   AUTO_START
+        NOM_CHEMIN_BINAIRE : C:\Windows\System32\spoolsv.exe
+        NOM_DÉMARRAGE_SERVICE : LocalSystem
+```
+>>> info ¦ net start / net stop
+`net start` sans argument liste les services **démarrés** (par nom d’affichage). Avec un nom, il démarre le service **et attend** qu’il soit prêt, alors que `sc start` rend la main tout de suite.
+```code cmd
+net stop spooler && net start spooler
+```
+```out
+Le service Spouleur d’impression s’arrête.
+Le service Spouleur d’impression a été arrêté.
+
+Le service Spouleur d’impression démarre.
+Le service Spouleur d’impression a démarré.
+```
+!it Le grand classique : impression bloquée → redémarrer le spouleur. On verra dans une mission comment vider aussi la file d’attente.
+>>> order cmd ¦ Redémarre le spouleur d’impression en une ligne, la relance seulement si l’arrêt a réussi.
+~ net ;; stop ;; spooler ;; && ;; net ;; start ;; spooler
+x~ & ;; sc ;; /f
+? `&&` évite de relancer si l’arrêt a échoué (droits insuffisants, par exemple).
+>>> type cmd ¦ Interroge l’état du service Spooler sur le poste PC-COMPTA-02.
+= sc \\PC-COMPTA-02 query spooler ;; sc \\pc-compta-02 query spooler ;; sc \\PC-COMPTA-02 query Spooler
+hint: Le nom du poste distant, précédé de deux antislashs, se place juste après `sc`.
+? `sc \\PC` utilise RPC sur le partage d’administration : pas besoin de WinRM. C’est l’outil de dépannage à distance par excellence sur un parc sans PowerShell Remoting.
+>>> qcm ¦ Tu veux connaître le PID du processus qui héberge le service Dnscache. Quelle sous-commande ?
++ `sc queryex dnscache`
+* `sc qc dnscache`
+* `sc query dnscache /pid`
+* `net start dnscache /pid`
+? `queryex` (**ex**tended) ajoute la ligne PID. Ensuite `tasklist /svc /fi "pid eq …"` montre les autres services du même svchost.
+
+### LESSON c17 ¦ Stratégies de groupe : gpupdate et gpresult ¦ 2 ¦ Forcer l’application des GPO et comprendre pourquoi l’une d’elles ne s’applique pas.
+>>> info ¦ GPO : rappel
+Une **GPO** (**G**roup **P**olicy **O**bject, objet de stratégie de groupe) est un lot de paramètres défini sur le contrôleur de domaine et appliqué aux ordinateurs et utilisateurs d’une **OU** : fond d’écran, lecteurs réseau, imprimantes, sécurité, installation de logiciels…
+
+Les postes les appliquent **au démarrage**, **à l’ouverture de session**, puis environ **toutes les 90 minutes** (± 30 min aléatoires).
+>>> info ¦ gpupdate : appliquer maintenant
+```anatomy cmd
+gpupdate ¦ cmd ¦ **G**roup **P**olicy **Update** : redemande les stratégies au contrôleur.
+/force ¦ sw ¦ Réapplique **tous** les paramètres, même ceux qui n’ont pas changé.
+```
+```table
+Commutateur ¦ Effet
+`/target:computer` ¦ seulement la partie ordinateur (`/target:user` : seulement l’utilisateur)
+`/force` ¦ réapplique tout, pas seulement les changements
+`/logoff` ¦ ferme la session si un paramètre l’exige (redirection de dossiers…)
+`/boot` ¦ redémarre si un paramètre l’exige (installation de logiciel…)
+`/wait:0` ¦ n’attend pas la fin : rend la main tout de suite
+```
+!tip Sans `/force`, seuls les paramètres modifiés sont appliqués : c’est plus rapide, et souvent suffisant.
+>>> type cmd ¦ Réapplique toutes les stratégies, ordinateur et utilisateur.
+= gpupdate /force
+```out
+Mise à jour de la stratégie...
+
+La mise à jour de la stratégie d’ordinateur s’est terminée sans erreur.
+La mise à jour de la stratégie utilisateur s’est terminée sans erreur.
+```
+>>> info ¦ gpresult : ce qui s’applique vraiment
+`gpresult` (**G**roup **P**olicy **Result**) affiche le **RSoP** (**R**esultant **S**et **o**f **P**olicy) : la liste des GPO effectivement appliquées… et celles qui ont été **filtrées**, avec la raison.
+```table
+Commutateur ¦ Signification
+`/r` ¦ **r**ésumé lisible (le plus utilisé)
+`/scope computer` ou `/scope user` ¦ limite à une partie (l’écriture `/scope:computer` est aussi acceptée)
+`/z` ¦ super-détaillé : chaque paramètre et sa valeur
+`/h rapport.html` ¦ rapport **H**TML, à ouvrir dans le navigateur
+`/s PC` ¦ interroge un poste distant
+`/user CONTOSO\jdupont` ¦ résultat pour un autre utilisateur ayant déjà ouvert une session sur ce poste
+```
+!warn `gpresult /r` exige des droits administrateur pour afficher la partie **ordinateur**. Sans élévation, seule la partie utilisateur apparaît.
+>>> type cmd ¦ Affiche le résumé des GPO appliquées à l’ordinateur uniquement.
+= gpresult /r /scope:computer ;; gpresult /scope:computer /r ;; gpresult /r /scope computer ;; gpresult /scope computer /r
+```out
+    Objets Stratégie de groupe appliqués
+    -------------------------------------
+        GPO_Postes_Securite
+        GPO_Postes_WindowsUpdate
+        GPO_Postes_Imprimantes
+        Default Domain Policy
+
+    Les GPO suivants n’ont pas été appliqués car ils ont été filtrés
+    -------------------------------------------------------------------
+        GPO_Postes_Kiosque_Reception
+            Filtrage :  Refusé (filtrage de sécurité)
+```
+>>> qcm ¦ `gpresult` indique `Filtrage : Refusé (filtrage de sécurité)` pour une GPO. Cause la plus probable ?
++ L’ordinateur (ou l’utilisateur) ne fait pas partie des groupes autorisés à lire/appliquer la GPO
+* La GPO est vide
+* Le PC n’a pas redémarré
+* La GPO est liée à une autre OU
+? Le **filtrage de sécurité** limite une GPO à certains groupes. « Non appliqué (vide) » signifierait une GPO sans paramètre ; une GPO liée ailleurs n’apparaîtrait simplement pas.
+>>> fill cmd ¦ Génère un rapport HTML complet des stratégies, à joindre au ticket.
+```code cmd
+gpresult ___ C:\Temp\rsop.html ___
+```
+= /h ;; /f
+~ /r ;; /z ;; /o
+? `/h` produit le rapport HTML ; `/f` (**f**orce) écrase le fichier s’il existe déjà.
+>>> qcm ¦ Une GPO de lecteur réseau vient d’être créée pour la Compta. L’utilisateur ne voit pas le lecteur après `gpupdate /force`. Que faire en priorité ?
++ Fermer puis rouvrir sa session : les lecteurs mappés par GPO s’appliquent à l’ouverture de session
+* Redémarrer le contrôleur de domaine
+* Réinstaller Windows
+* Désactiver le pare-feu
+? Certaines extensions (lecteurs, redirection de dossiers, installation de logiciels) ne s’appliquent qu’à l’ouverture de session ou au démarrage. `gpupdate` le signale d’ailleurs souvent.
+
+### LESSON c18 ¦ Réparer Windows : sfc, DISM, chkdsk ¦ 3 ¦ Fichiers système corrompus et disque abîmé : l’ordre des outils et ce que fait chacun.
+>>> info ¦ Trois outils, trois couches
+```table
+Outil ¦ Ce qu’il répare ¦ Signification
+`sfc` ¦ les **fichiers système** de Windows (DLL, exe protégés) ¦ **S**ystem **F**ile **C**hecker
+`DISM` ¦ le **magasin de composants** (WinSxS) qui sert de modèle à sfc ¦ **D**eployment **I**mage **S**ervicing and **M**anagement
+`chkdsk` ¦ le **système de fichiers** NTFS et les secteurs du disque ¦ **Ch**ec**k** **Disk**
+```
+Les trois exigent une invite **administrateur**.
+>>> info ¦ sfc /scannow
+```anatomy cmd
+sfc ¦ cmd ¦ **S**ystem **F**ile **C**hecker.
+/scannow ¦ sw ¦ **Scan now** : analyse tout de suite et **répare** ce qui peut l’être.
+```
+- `/verifyonly` : vérifie sans réparer.
+- Le détail est écrit dans `C:\Windows\Logs\CBS\CBS.log` (**C**omponent **B**ased **S**ervicing).
+- Durée : 5 à 15 minutes ; ne ferme pas la fenêtre.
+>>> info ¦ DISM : réparer la source
+Si `sfc` dit « a trouvé des fichiers endommagés mais n’a pas pu en réparer certains », c’est que sa **source** (le magasin de composants) est elle-même abîmée. DISM la répare en téléchargeant les bons fichiers depuis Windows Update.
+```code cmd
+DISM /Online /Cleanup-Image /RestoreHealth
+```
+```anatomy cmd
+DISM ¦ cmd ¦ **D**eployment **I**mage **S**ervicing and **M**anagement.
+/Online ¦ sw ¦ Travaille sur le Windows **en cours d’exécution** (et non sur une image .wim hors ligne).
+/Cleanup-Image ¦ sw ¦ Famille d’opérations de nettoyage/réparation de l’image.
+/RestoreHealth ¦ sw ¦ Détecte **et répare** la corruption.
+```
+```table
+Option ¦ Durée ¦ Effet
+`/CheckHealth` ¦ secondes ¦ lit l’indicateur de corruption déjà connu
+`/ScanHealth` ¦ minutes ¦ analyse complète, sans réparer
+`/RestoreHealth` ¦ 10–30 min ¦ analyse et répare
+```
+>>> order cmd ¦ L’ordre recommandé quand Windows se comporte bizarrement : d’abord la source, ensuite les fichiers.
+~ DISM /Online /Cleanup-Image /RestoreHealth ;; && ;; sfc /scannow
+x~ chkdsk /f ;; |
+? On répare d’abord le **modèle** (DISM), puis les **copies** (sfc). Dans l’autre sens, sfc risquerait de recopier des fichiers déjà corrompus.
+>>> info ¦ chkdsk : le disque
+```anatomy cmd
+chkdsk ¦ cmd ¦ **Ch**ec**k** **Disk** : vérifie le système de fichiers.
+C: ¦ path ¦ Le volume à vérifier.
+/f ¦ sw ¦ **F**ix : corrige les erreurs trouvées.
+/r ¦ sw ¦ **R**ecover : cherche les secteurs défectueux et récupère les données lisibles (implique /f, beaucoup plus long).
+```
+- Sans commutateur : lecture seule, rien n’est corrigé.
+- `/x` : force le démontage du volume (ferme les fichiers ouverts dessus).
+- Sur C:, le volume est en cours d’utilisation : chkdsk propose de **planifier** la vérification au prochain redémarrage (réponds `O`).
+- `/scan` : analyse en ligne, sans redémarrage (NTFS).
+!warn Sur un disque mécanique qui « claque », lance d’abord une **sauvegarde**, ensuite seulement `chkdsk /r`, qui sollicite fortement le disque.
+>>> type cmd ¦ Vérifie le volume D: et corrige les erreurs du système de fichiers.
+= chkdsk D: /f ;; chkdsk /f D: ;; chkdsk d: /f ;; chkdsk /f d:
+>>> qcm ¦ Que fait `chkdsk C:` sans aucun commutateur ?
++ Une vérification en lecture seule, sans rien corriger
+* Une réparation complète au prochain redémarrage
+* Un formatage rapide
+* Une défragmentation
+? Sans `/f` ni `/r`, chkdsk se contente de signaler.
+
+### LESSON c19 ¦ Sessions et redémarrages : shutdown, quser, logoff, msg ¦ 2 ¦ Redémarrer un poste à distance, voir qui est connecté, prévenir et fermer une session.
+>>> info ¦ shutdown : bien plus qu’éteindre
+```anatomy cmd
+shutdown ¦ cmd ¦ Arrêt, redémarrage ou fermeture de session.
+/r ¦ sw ¦ **R**estart : redémarrer.
+/m \\PC-COMPTA-02 ¦ sw ¦ **M**achine : le poste visé (distant).
+/t 300 ¦ sw ¦ **T**ime : délai en secondes avant l’action (ici 5 minutes).
+/c "Mise à jour : redémarrage dans 5 min" ¦ str ¦ **C**omment : message affiché à l’utilisateur (512 caractères max).
+```
+```table
+Commutateur ¦ Signification
+`/s` ¦ **s**hutdown : arrêter
+`/r` ¦ **r**estart : redémarrer
+`/l` ¦ **l**ogoff : fermer la session (local uniquement)
+`/a` ¦ **a**bort : annuler un arrêt programmé (pendant le délai)
+`/f` ¦ **f**orce : ferme les applications sans attendre (perte de données possible)
+`/g` ¦ redémarre et relance les applications enregistrées
+`/fw` ¦ redémarre vers le **f**irm**w**are (BIOS/UEFI), avec `/r`
+`/d p:4:1` ¦ raison consignée dans le journal : **p**lanifié, catégorie 4, sous-catégorie 1
+```
+!tip `shutdown /r /m \\PC` passe par RPC : il fonctionne sans WinRM, à condition d’être administrateur du poste distant.
+>>> fill cmd ¦ Redémarre PC-COMPTA-02 dans 10 minutes en prévenant l’utilisateur.
+```code cmd
+shutdown /r ___ \\PC-COMPTA-02 ___ 600 ___ "Redémarrage pour mise à jour dans 10 minutes"
+```
+= /m ;; /t ;; /c
+~ /s ;; /f ;; /a
+? `/m` la machine, `/t` le délai en secondes, `/c` le commentaire affiché.
+>>> type cmd ¦ Oups, mauvais poste ! Annule l’arrêt programmé sur PC-COMPTA-02.
+= shutdown /a /m \\PC-COMPTA-02 ;; shutdown /m \\PC-COMPTA-02 /a ;; shutdown -a -m \\PC-COMPTA-02
+? `/a` (**a**bort) n’agit que pendant le délai `/t`. D’où l’intérêt de toujours laisser un délai.
+>>> info ¦ Qui est connecté ? quser
+`quser` (alias de `query user`) liste les sessions ouvertes, en local ou sur un autre poste/serveur :
+```code cmd
+quser /server:PC-COMPTA-02
+```
+```out
+ UTILISATEUR           NOM DE SESSION     ID  ÉTAT    TEMPS INACT DATE OUVERTURE
+ jrobert               console             2  Actif           12  08/10/2026 08:05
+```
+- **NOM DE SESSION** : `console` = devant l’écran ; `rdp-tcp#3` = bureau à distance.
+- **ID** : le numéro de session, utilisé par `logoff`, `msg` et `mstsc /shadow`.
+- **ÉTAT** : `Actif` ou `Déco` (déconnectée mais toujours ouverte, applications en mémoire).
+>>> type cmd ¦ Avant de redémarrer SRV-FICHIERS, vérifie qui y a une session ouverte.
+= quser /server:SRV-FICHIERS ;; query user /server:SRV-FICHIERS ;; quser /server:srv-fichiers ;; query user /server:srv-fichiers
+>>> info ¦ Prévenir et fermer : msg et logoff
+```code cmd
+msg 2 /server:PC-COMPTA-02 "Le service informatique va redémarrer votre poste à 12h30. Merci d’enregistrer votre travail."
+logoff 2 /server:PC-COMPTA-02
+```
+- `msg ID` ou `msg utilisateur` ou `msg *` (toutes les sessions) ; `/time:60` : durée d’affichage ; `/w` : attend que l’utilisateur clique OK.
+- `logoff ID` ferme la session : les documents non enregistrés sont perdus.
+!it Sur un serveur RDS, une session « Déco » depuis 3 jours bloque un fichier Excel partagé : `quser` pour trouver l’ID, `msg` pour prévenir si besoin, puis `logoff`.
+>>> qcm ¦ Une session apparaît « Déco » dans `quser`. Que cela signifie-t-il ?
++ L’utilisateur a fermé la fenêtre RDP sans se déconnecter : ses applications tournent toujours
+* La session est fermée, il n’y a plus rien en mémoire
+* Le compte est désactivé
+* Le poste est éteint
+? Une session déconnectée garde tout en mémoire (et les fichiers ouverts verrouillés). Seul `logoff` libère réellement.
+
+### LESSON c20 ¦ Tâches planifiées : schtasks ¦ 3 ¦ Créer, lister, lancer et supprimer une tâche, par exemple la sauvegarde de chaque soir.
+>>> info ¦ Le planificateur en ligne de commande
+`schtasks` (**Sch**eduled **Tasks**) pilote le planificateur de tâches de Windows : la même chose que `taskschd.msc`, mais scriptable et utilisable à distance (`/s PC`).
+```table
+Action ¦ Rôle
+`/create` ¦ créer une tâche
+`/query` ¦ lister les tâches
+`/run` ¦ lancer maintenant
+`/end` ¦ arrêter une tâche en cours
+`/change` ¦ modifier (activer/désactiver, heure…)
+`/delete` ¦ supprimer
+```
+>>> info ¦ Anatomie d’une création
+```code cmd
+schtasks /create /tn "Sauvegarde Data" /tr "C:\Scripts\sauvegarde.bat" /sc daily /st 22:00 /ru SYSTEM /rl highest
+```
+```anatomy cmd
+/create ¦ sw ¦ Créer une tâche.
+/tn "Sauvegarde Data" ¦ sw ¦ **T**ask **N**ame : son nom (guillemets si espaces).
+/tr "C:\Scripts\sauvegarde.bat" ¦ sw ¦ **T**ask **R**un : le programme ou script à lancer.
+/sc daily ¦ sw ¦ **SC**hedule : la fréquence.
+/st 22:00 ¦ sw ¦ **S**tart **T**ime : l’heure de départ (format 24 h).
+/ru SYSTEM ¦ sw ¦ **R**un as **U**ser : le compte d’exécution. SYSTEM = aucun mot de passe à gérer, droits complets sur le poste local.
+/rl highest ¦ sw ¦ **R**un **L**evel : avec les privilèges les plus élevés (élevé, comme « Exécuter en tant qu’administrateur »).
+```
+>>> info ¦ Les fréquences de /sc
+```table
+/sc ¦ Signification ¦ Complément
+`once` ¦ une seule fois ¦ avec `/st` et `/sd` (date)
+`minute` / `hourly` ¦ toutes les N minutes/heures ¦ `/mo 15` = toutes les 15
+`daily` ¦ tous les jours ¦ `/mo 2` = un jour sur deux
+`weekly` ¦ chaque semaine ¦ `/d MON,FRI` (jours en anglais : MON TUE WED THU FRI SAT SUN)
+`monthly` ¦ chaque mois ¦ `/d 1` = le 1er du mois
+`onstart` ¦ au démarrage du PC ¦ —
+`onlogon` ¦ à l’ouverture de session ¦ —
+`onidle` ¦ quand le PC est inactif ¦ `/i 10` minutes d’inactivité
+```
+!warn Les jours de `/d` sont **toujours en anglais**, même sur un Windows français : `MON`, pas `LUN`.
+>>> fill cmd ¦ Planifie le nettoyage chaque lundi et vendredi à 7 h.
+```code cmd
+schtasks /create /tn "Nettoyage" /tr "C:\Scripts\nettoyage.bat" /sc ___ /d ___ /st ___
+```
+= weekly ;; MON,FRI ;; 07:00
+~ daily ;; LUN,VEN ;; 7h00 ;; monthly
+? `weekly` + `/d MON,FRI` ; l’heure s’écrit `HH:mm`.
+>>> type cmd ¦ Lance immédiatement la tâche « Sauvegarde Data » pour la tester.
+= schtasks /run /tn "Sauvegarde Data" ;; schtasks /tn "Sauvegarde Data" /run
+```out
+RÉUSSITE : tentative d’exécution de la tâche planifiée "Sauvegarde Data".
+```
+? Tester avec `/run` avant d’attendre 22 h : tu vois tout de suite si le chemin ou les droits posent problème.
+>>> info ¦ Lister et lire le résultat
+```code cmd
+schtasks /query /tn "Sauvegarde Data" /fo list /v
+```
+Champs à surveiller :
+- **Dernier résultat** : `0` = succès. Une autre valeur = le code de sortie du script (ex. `1` si ta sauvegarde a fait `exit /b 1`).
+- **Prochaine exécution**, **Statut** (`Prêt`, `En cours d’exécution`, `Désactivé`).
+- `/fo` = **f**ormat **o**f output (`table`, `list`, `csv`), `/v` = **v**erbose.
+>>> qcm ¦ Une tâche affiche « Dernier résultat : 0x1 ». Que signifie ce code ?
++ Le script s’est terminé avec le code de sortie 1 : à investiguer dans son journal
+* La tâche a réussi une fois
+* La tâche n’a jamais été lancée
+* La tâche est désactivée
+? Le planificateur affiche le code de retour du programme. 0 = OK, tout le reste = à regarder (un script peut aussi renvoyer exprès 1 en cas d’échec).
+>>> type cmd ¦ Supprime la tâche « Nettoyage » sans demande de confirmation.
+= schtasks /delete /tn "Nettoyage" /f ;; schtasks /delete /tn Nettoyage /f ;; schtasks /delete /f /tn "Nettoyage" ;; schtasks /delete /f /tn Nettoyage
+? `/f` (**f**orce) supprime sans demander « Voulez-vous vraiment… (O/N) ».
+
+### LESSON c21 ¦ Le Registre avec reg ¦ 3 ¦ Ruches, clés, valeurs et types : lire, modifier, exporter, y compris à distance.
+>>> info ¦ L’arborescence du Registre
+Le **Registre** est la base de configuration de Windows. Il ressemble à un système de fichiers :
+- les **ruches** (hives) sont les racines ;
+- les **clés** sont des dossiers ;
+- les **valeurs** sont des fichiers (nom, type, donnée).
+```table
+Ruche ¦ Abréviation ¦ Contenu
+HKEY_LOCAL_MACHINE ¦ `HKLM` ¦ réglages de la **machine**, pour tous les utilisateurs
+HKEY_CURRENT_USER ¦ `HKCU` ¦ réglages de l’**utilisateur connecté**
+HKEY_USERS ¦ `HKU` ¦ les profils chargés, un par SID
+HKEY_CLASSES_ROOT ¦ `HKCR` ¦ associations de fichiers (.pdf → lecteur)
+HKEY_CURRENT_CONFIG ¦ `HKCC` ¦ profil matériel actuel
+```
+`HK` = **H**andle to **K**ey (« poignée de clé »).
+>>> info ¦ Les types de valeurs
+```table
+Type ¦ Contenu ¦ Exemple
+`REG_SZ` ¦ texte (**S**tring, terminé par **Z**éro) ¦ un chemin, un nom
+`REG_EXPAND_SZ` ¦ texte avec variables à développer ¦ `%SystemRoot%\system32`
+`REG_MULTI_SZ` ¦ liste de textes ¦ plusieurs serveurs
+`REG_DWORD` ¦ nombre 32 bits (**D**ouble **WORD**) ¦ `0` / `1` pour un interrupteur
+`REG_QWORD` ¦ nombre 64 bits (**Q**uad **WORD**) ¦ grandes valeurs
+`REG_BINARY` ¦ données brutes ¦ —
+```
+>>> info ¦ reg query : lire
+```code cmd
+reg query "HKLM\SYSTEM\CurrentControlSet\Control\Terminal Server" /v fDenyTSConnections
+```
+```anatomy cmd
+reg ¦ cmd ¦ Outil en ligne de commande du **Reg**istre.
+query ¦ arg ¦ Lire une clé ou une valeur.
+"HKLM\SYSTEM\…\Terminal Server" ¦ path ¦ Le chemin de la clé, entre guillemets à cause de l’espace.
+/v ¦ sw ¦ **V**alue : le nom de la valeur à lire.
+fDenyTSConnections ¦ arg ¦ « **f**lag **Deny** **T**erminal **S**ervices **Connections** » : 0 = bureau à distance autorisé, 1 = refusé.
+```
+```out
+
+HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Terminal Server
+    fDenyTSConnections    REG_DWORD    0x0
+```
+- `/s` : parcourt toutes les sous-clés (**s**ubkeys).
+- `/f texte` : cherche (**f**ind) un texte dans les noms et données.
+- `/ve` : la valeur par défaut (**v**alue **e**mpty).
+>>> type cmd ¦ Liste les programmes lancés au démarrage de ta session (clé Run de l’utilisateur).
+= reg query HKCU\Software\Microsoft\Windows\CurrentVersion\Run ;; reg query "HKCU\Software\Microsoft\Windows\CurrentVersion\Run" ;; reg query HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Run
+```out
+
+HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Run
+    OneDrive    REG_SZ    "C:\Program Files\Microsoft OneDrive\OneDrive.exe" /background
+    com.squirrel.Teams.Teams    REG_SZ    ms-teams.exe
+    ScanAssist    REG_SZ    "C:\Program Files (x86)\ScanAssist\ScanAssist.exe" /tray
+```
+? Les clés `Run` (HKCU pour l’utilisateur, HKLM pour tous) listent ce qui démarre automatiquement : premier endroit à regarder pour un PC lent au démarrage.
+>>> info ¦ reg add : écrire
+```code cmd
+reg add "HKLM\SYSTEM\CurrentControlSet\Control\Terminal Server" /v fDenyTSConnections /t REG_DWORD /d 0 /f
+```
+```anatomy cmd
+add ¦ arg ¦ Créer ou modifier.
+/v fDenyTSConnections ¦ sw ¦ **V**alue : le nom de la valeur.
+/t REG_DWORD ¦ sw ¦ **T**ype de la valeur.
+/d 0 ¦ sw ¦ **D**ata : la donnée à écrire.
+/f ¦ sw ¦ **F**orce : écrase sans demander confirmation.
+```
+!warn Une erreur dans HKLM peut empêcher Windows de démarrer. Avant toute modification : `reg export` de la clé.
+>>> fill cmd ¦ Sauvegarde la clé Terminal Server dans un fichier avant de la modifier.
+```code cmd
+reg ___ "HKLM\SYSTEM\CurrentControlSet\Control\Terminal Server" C:\Temp\ts_avant.reg ___
+```
+= export ;; /y
+~ save ;; /f ;; backup ;; query
+? `reg export` crée un fichier .reg lisible ; `/y` (**y**es) écrase le fichier s’il existe. Pour revenir en arrière : `reg import C:\Temp\ts_avant.reg`.
+>>> qcm ¦ Pour désactiver une option on écrit `/t REG_DWORD /d 1`. Que se passe-t-il si on oublie `/t` ?
++ La valeur est créée en `REG_SZ` (texte « 1 »), et le programme qui attend un nombre l’ignore
+* reg refuse la commande
+* reg devine le bon type
+* La valeur est créée vide
+? Le type par défaut de `reg add` est `REG_SZ`. Erreur sournoise : la commande réussit, mais le réglage n’a aucun effet.
+>>> info ¦ Le registre d’un autre poste
+```code cmd
+reg query \\PC-COMPTA-02\HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall /s /f "Acrobat"
+```
+- Préfixe `\\PC\` devant la ruche ; seules **HKLM** et **HKU** sont accessibles à distance.
+- Nécessite le service **RemoteRegistry** démarré sur le poste distant (souvent en manuel/désactivé) : `sc \\PC-COMPTA-02 start remoteregistry`.
+!it La clé `…\Uninstall` contient un sous-dossier par logiciel installé, avec `DisplayName` et `DisplayVersion` : c’est la base d’un inventaire logiciel sans agent.
+>>> type cmd ¦ Démarre le service de registre à distance sur PC-COMPTA-02.
+= sc \\PC-COMPTA-02 start remoteregistry ;; sc \\PC-COMPTA-02 start RemoteRegistry ;; sc \\pc-compta-02 start remoteregistry
+? Erreur 1058 ? Le service est **désactivé** : il faut d’abord `sc \\PC-COMPTA-02 config remoteregistry start= demand`. Pense à le rearrêter ensuite (`sc \\PC-COMPTA-02 stop remoteregistry`) si ta politique de sécurité le veut désactivé.
+
+### LESSON c22 ¦ Le domaine vu depuis CMD ¦ 3 ¦ net user /domain, nltest, klist, w32tm, dsquery : diagnostiquer sans console AD.
+>>> info ¦ net user et net group sur le domaine
+Sans `/domain`, `net user` parle des comptes **locaux** du PC. Avec, il interroge le contrôleur de domaine :
+```code cmd
+net user mlefevre /domain
+```
+```out
+Nom d’utilisateur                              mlefevre
+Nom complet                                    Marie Lefèvre
+Compte : actif                                 Verrouillé
+Mot de passe : dernier changmt.                12/09/2026 08:41:12
+Mot de passe expire                            11/12/2026 07:41:12
+Dernier accès                                  08/10/2026 08:02:45
+Appartient aux groupes globaux                 *GG_RH               *Utilisateurs du domaine
+```
+!tip La ligne « Compte : actif » répond tout de suite à « verrouillé ou pas ? » et « mot de passe expiré ? ». Pas besoin d’ouvrir la console AD.
+>>> type cmd ¦ Liste les membres du groupe de domaine GG_Compta.
+= net group GG_Compta /domain ;; net group "GG_Compta" /domain ;; net group gg_compta /domain
+```out
+La demande sera traitée sur un contrôleur de domaine pour le domaine contoso.local.
+
+Nom du groupe     GG_Compta
+Commentaire       Comptabilité
+
+Membres
+
+-------------------------------------------------------------------------------
+jdupont                  jrobert
+La commande s’est terminée correctement.
+```
+? `net group` = groupes **globaux du domaine** ; `net localgroup` = groupes **locaux** du PC (ex. Administrateurs).
+>>> info ¦ nltest : la relation poste ↔ domaine
+```table
+Commande ¦ Rôle
+`nltest /dsgetdc:contoso.local` ¦ quel contrôleur de domaine le poste trouve (**DS** **Get** **DC**)
+`nltest /sc_verify:contoso.local` ¦ vérifie le **canal sécurisé** (**S**ecure **C**hannel) entre le poste et le domaine
+`nltest /sc_reset:contoso.local` ¦ réinitialise ce canal
+`nltest /dclist:contoso.local` ¦ liste tous les DC du domaine
+```
+Le **canal sécurisé** repose sur le mot de passe du **compte ordinateur**, changé automatiquement tous les 30 jours. Un PC restauré depuis une vieille image peut le perdre : message « La relation d’approbation entre cette station de travail et le domaine principal a échoué ».
+>>> type cmd ¦ Vérifie le canal sécurisé du poste avec le domaine contoso.local.
+= nltest /sc_verify:contoso.local ;; nltest /SC_VERIFY:contoso.local ;; nltest /sc_verify:CONTOSO
+```out
+Connexion d’approbation Status = 0 0x0 NERR_Success
+Contrôleur de domaine approuvé \\SRV-AD01.contoso.local
+Statut de vérification d’approbation = 0 0x0 NERR_Success
+La commande a été correctement exécutée
+```
+>>> info ¦ Kerberos et l’heure : klist et w32tm
+L’authentification de domaine repose sur **Kerberos** : à l’ouverture de session, le poste reçoit un **ticket** qui prouve ton identité et contient tes groupes.
+- `klist` : affiche les tickets ; `klist purge` : les supprime (ils seront redemandés, avec les groupes à jour, au prochain accès réseau).
+- Kerberos tolère **5 minutes** d’écart d’horloge maximum entre poste et DC. Au-delà : échec d’authentification.
+```table
+Commande ¦ Rôle
+`w32tm /query /status` ¦ état de la synchronisation (source, dernier succès)
+`w32tm /query /source` ¦ serveur de temps utilisé
+`w32tm /resync` ¦ resynchroniser maintenant (administrateur)
+```
+>>> qcm ¦ Un poste refuse toute authentification au domaine et `time` affiche 9:47 alors qu’il est 9:39. Quelle cause ?
++ L’écart d’horloge dépasse les 5 minutes tolérées par Kerberos
+* Le câble réseau est débranché
+* Le mot de passe a expiré
+* Le DNS est mal configuré
+? 8 minutes d’écart suffisent à faire échouer Kerberos. `w32tm /resync`, puis vérifie la pile BIOS si cela revient.
+>>> type cmd ¦ Supprime tes tickets Kerberos pour forcer la prise en compte d’un nouveau groupe sur les partages.
+= klist purge
+>>> info ¦ dsquery : chercher dans l’annuaire
+`dsquery` (**D**irectory **S**ervice **Query**, installé avec les outils RSAT) cherche des objets AD et renvoie leurs **DN** (**D**istinguished **N**ame).
+```code cmd
+dsquery user -name "Marie*"
+dsquery computer -inactive 8
+```
+```out
+"CN=Marie Lefèvre,OU=RH,OU=Utilisateurs,DC=contoso,DC=local"
+```
+- `-name` : filtre par nom (jokers `*`).
+- `-inactive 8` : pas de connexion depuis **8 semaines**.
+- `-disabled` : comptes désactivés.
+!tip dsquery dépanne quand PowerShell n’est pas disponible. Pour un vrai travail sur AD, la piste « Active Directory » (module PowerShell) est bien plus puissante.
+>>> qcm ¦ Dans `dsquery computer -inactive 8`, que représente 8 ?
++ 8 semaines sans connexion
+* 8 jours
+* 8 mois
+* Les 8 premiers résultats
+? L’unité de `-inactive` et `-stalepwd` est la **semaine**. Pour limiter le nombre de résultats : `-limit`.
+
+--- Scripts batch
+### LESSON c23 ¦ Ton premier script .bat ¦ 2 ¦ @echo off, commentaires, %~dp0, accents : la structure de base d’un script propre.
+>>> info ¦ Qu’est-ce qu’un fichier batch ?
+Un fichier **.bat** (ou **.cmd**) est un simple fichier texte contenant des commandes CMD, exécutées **ligne après ligne** comme si tu les tapais. « Batch » veut dire **lot** : un lot de commandes.
+- Double-clic ou nom tapé dans l’invite : il s’exécute.
+- Clic droit → « Exécuter en tant qu’administrateur » : pour les commandes qui exigent l’élévation.
+- `.bat` et `.cmd` se comportent presque pareil ; `.cmd` est la forme moderne (différence subtile sur ERRORLEVEL après `set`, sans importance au quotidien).
+>>> info ¦ Squelette d’un script propre
+```script cmd C:\Scripts\exemple.bat
+@echo off
+chcp 65001 > nul
+rem ==== Exemple : informations du poste ====
+title Infos poste
+cd /d "%~dp0"
+
+echo Poste : %COMPUTERNAME%
+echo Compte : %USERDOMAIN%\%USERNAME%
+echo.
+pause
+```
+```anatomy cmd
+@echo off ¦ cmd ¦ `echo off` cache l’affichage des commandes elles-mêmes ; le `@` cache cette première ligne aussi.
+chcp 65001 > nul ¦ cmd ¦ **Ch**ange **C**ode **P**age : 65001 = UTF-8, pour afficher les accents. `> nul` masque le message de confirmation.
+rem ¦ cm ¦ **REM**ark : commentaire, ignoré à l’exécution.
+title ¦ cmd ¦ Change le titre de la fenêtre.
+cd /d "%~dp0" ¦ cmd ¦ Se place dans le dossier **du script** (voir plus loin).
+echo. ¦ cmd ¦ Le point colle à echo : affiche une **ligne vide**.
+pause ¦ cmd ¦ « Appuyez sur une touche pour continuer… » : la fenêtre ne se ferme pas avant que tu aies lu.
+```
+>>> qcm ¦ Sans `@echo off` en première ligne, que verrait l’utilisateur ?
++ Chaque commande affichée avant son résultat, avec l’invite
+* Rien, le script ne s’exécuterait pas
+* Uniquement les erreurs
+* Le script s’exécuterait en arrière-plan
+? Pratique pour **déboguer** (mets `echo on` temporairement), illisible pour un utilisateur.
+>>> info ¦ Commentaires : rem et ::
+- `rem texte` : commentaire officiel, fonctionne partout.
+- `:: texte` : astuce répandue (une « étiquette » qui ne sert jamais), plus lisible… mais **à éviter à l’intérieur d’un bloc entre parenthèses** (`if`, `for`) où elle peut provoquer des erreurs.
+!tip Commente le **pourquoi**, pas le quoi : `rem On attend 5 s : le service met du temps à libérer le port` vaut mieux que `rem timeout 5`.
+>>> info ¦ %~dp0 : le dossier du script
+`%0` est le nom du script lui-même. Les **modificateurs** `~d` (**d**rive) et `~p` (**p**ath) en extraient le lecteur et le dossier :
+```table
+Écriture ¦ Valeur si le script est C:\Scripts\exemple.bat
+`%0` ¦ `exemple.bat` (tel que lancé)
+`%~f0` ¦ `C:\Scripts\exemple.bat` (**f**ull : chemin complet)
+`%~dp0` ¦ `C:\Scripts\` (lecteur + dossier, **avec** l’antislash final)
+`%~n0` ¦ `exemple` (**n**ame : nom sans extension)
+`%~x0` ¦ `.bat` (e**x**tension)
+```
+!it Un script lancé « en tant qu’administrateur » démarre dans `C:\Windows\System32`, pas dans son dossier ! `cd /d "%~dp0"` en début de script règle le problème quand il lit des fichiers voisins.
+>>> fill cmd ¦ Copie le fichier config.ini qui se trouve à côté du script vers le profil, quel que soit le dossier courant.
+```script cmd C:\Scripts\deploie.bat
+@echo off
+copy "___config.ini" "%USERPROFILE%\" /y
+```
+= %~dp0
+~ %0 ;; %~n0 ;; %CD%
+? `%~dp0` contient déjà l’antislash final : `%~dp0config.ini` = `C:\Scripts\config.ini`. `%CD%` serait le dossier **courant**, qui peut être n’importe lequel.
+>>> order cmd ¦ Remets dans l’ordre le début typique d’un script.
+~ @echo off ;; chcp 65001 > nul ;; cd /d "%~dp0"
+x~ pause ;; echo on
+? D’abord on coupe l’écho, ensuite l’encodage, puis on se place dans le dossier du script.
+>>> info ¦ Les accents
+CMD utilise par défaut l’ancienne **page de codes 850** (OEM). Un script enregistré en UTF-8 sous le Bloc-notes affichera `rÃ©seau` au lieu de `réseau`. Deux solutions :
+- `chcp 65001 > nul` en début de script **et** le fichier enregistré en UTF-8 ;
+- ou éviter les accents dans les messages (`reseau`, `terminee`), la méthode la plus robuste sur les vieux postes.
+>>> type cmd ¦ Exécute le script de diagnostic du dossier C:\Scripts.
+= C:\Scripts\diag_reseau.bat ;; "C:\Scripts\diag_reseau.bat" ;; call C:\Scripts\diag_reseau.bat ;; C:\Scripts\diag_reseau
+? Tu verras ses quatre étapes s’exécuter, puis `pause`. Dans le terminal du site, essaie aussi `type C:\Scripts\diag_reseau.bat` pour lire son code.
+
+### LESSON c24 ¦ Variables : set, set /a, set /p, sous-chaînes ¦ 2 ¦ Stocker, calculer, demander une saisie, découper du texte et dater un fichier.
+>>> info ¦ Créer et lire une variable
+```code cmd
+set SERVEUR=SRV-FICHIERS
+echo Connexion à %SERVEUR%
+```
+```out
+Connexion à SRV-FICHIERS
+```
+- On **écrit** sans `%` : `set NOM=valeur`.
+- On **lit** entre `%` : `%NOM%`.
+- Les noms ne sont pas sensibles à la casse : `%serveur%` = `%SERVEUR%`.
+>>> info ¦ Le piège des espaces
+Avec `set`, **tout** compte, espaces compris :
+```code cmd
+set NOM = Dupont
+```
+crée une variable nommée `NOM␣` (avec espace) dont la valeur est `␣Dupont`. Et `%NOM%` est vide !
+!tip La forme sûre : `set "NOM=Dupont"`. Les guillemets entourent **l’affectation entière** : ils ne font pas partie de la valeur et empêchent un espace invisible en fin de ligne de s’y glisser.
+>>> qcm ¦ Quelle écriture crée correctement la variable DEST avec la valeur D:\Backup ?
++ `set "DEST=D:\Backup"`
+* `set DEST = D:\Backup`
+* `set %DEST%=D:\Backup`
+* `$DEST = "D:\Backup"`
+? `set DEST = …` créerait « DEST␣ ». La dernière ligne est du PowerShell.
+>>> info ¦ set /a : calculer
+`/a` = **a**rithmetic. Uniquement des **entiers** (pas de virgule : 10/3 donne 3).
+```table
+Opérateur ¦ Rôle ¦ Exemple
+`+ - * /` ¦ opérations de base ¦ `set /a TOTAL=5*3+1` → 16
+`%` (`%%` dans un .bat) ¦ modulo, reste de la division ¦ `set /a R=17 %% 5` → 2
+`+=` `-=` ¦ ajouter / retirer ¦ `set /a COMPTEUR+=1`
+`( )` ¦ priorité ¦ `set /a X=(2+3)*4` → 20
+```
+Dans `set /a`, les variables se lisent **sans** `%` : `set /a TOTAL=TOTAL+PRIX`.
+>>> type cmd ¦ Crée la variable POSTES valant 12 fois 4.
+= set /a POSTES=12*4 ;; set /a "POSTES=12*4" ;; set /a POSTES=4*12 ;; set /a "POSTES=4*12"
+```out
+48
+```
+>>> info ¦ set /p : demander une saisie
+`/p` = **p**rompt : affiche un message et attend que l’utilisateur tape une réponse.
+```script cmd C:\Scripts\demande.bat
+@echo off
+set /p POSTE=Nom du poste à tester : 
+ping -n 1 %POSTE%
+```
+!warn Si l’utilisateur appuie juste sur Entrée, la variable garde son **ancienne** valeur (ou reste indéfinie). Initialise-la avant : `set "POSTE="`.
+>>> info ¦ Découper une variable : les sous-chaînes
+```table
+Syntaxe ¦ Résultat si NOM=Dupont ¦ Explication
+`%NOM:~0,3%` ¦ `Dup` ¦ à partir de la position 0, 3 caractères
+`%NOM:~2%` ¦ `pont` ¦ à partir de la position 2, jusqu’au bout
+`%NOM:~-2%` ¦ `nt` ¦ les 2 derniers caractères
+`%NOM:pont=bois%` ¦ `Dubois` ¦ **remplace** « pont » par « bois »
+`%NOM: =%` ¦ — ¦ supprime tous les espaces (remplace par rien)
+```
+Les positions commencent à **0**.
+>>> info ¦ Un nom de fichier daté
+`%DATE%` vaut `08/10/2026` sur un Windows français (jj/mm/aaaa). On le découpe pour fabriquer `2026-10-08`, qui se **trie** correctement dans l’explorateur :
+```code cmd
+echo backup_%DATE:~6,4%-%DATE:~3,2%-%DATE:~0,2%.log
+```
+```out
+backup_2026-10-08.log
+```
+```anatomy cmd
+%DATE:~6,4% ¦ var ¦ Position 6, 4 caractères : l’**année**.
+%DATE:~3,2% ¦ var ¦ Position 3, 2 caractères : le **mois**.
+%DATE:~0,2% ¦ var ¦ Position 0, 2 caractères : le **jour**.
+```
+!warn Le format de `%DATE%` dépend des **paramètres régionaux** : sur un poste anglais (mm/dd/yyyy), ce découpage donnerait un résultat faux. Pour un script robuste multi-pays, PowerShell (`Get-Date -Format yyyy-MM-dd`) est plus sûr.
+>>> fill cmd ¦ Garde seulement l’année de la date du jour.
+```code cmd
+echo %DATE:___%
+```
+= ~6,4
+~ ~0,4 ;; ~4,6 ;; ~-4,6
+? Dans `08/10/2026`, l’année commence au 7e caractère, donc à la position 6 (on compte à partir de 0), sur 4 caractères. `~-4` fonctionnerait aussi.
+>>> info ¦ setx : une variable permanente
+`set` ne vit que dans la fenêtre en cours. `setx` (**set** e**x**tended) l’enregistre dans le Registre, pour les **prochaines** fenêtres :
+```code cmd
+setx SITE "Nice"
+setx /m OUTILS "C:\Tools"
+```
+- Sans `/m` : variable de l’utilisateur (HKCU). Avec `/m` (**m**achine) : pour tous, exige l’administrateur.
+- La fenêtre actuelle **ne voit pas** le changement.
+!warn N’utilise jamais `setx PATH "%PATH%;C:\Tools"` : cela fusionne le PATH système et utilisateur et tronque au-delà de 1024 caractères. Modifie le PATH par l’interface ou PowerShell.
+>>> qcm ¦ Tu tapes `setx SITE Nice` puis `echo %SITE%` dans la même fenêtre. Résultat ?
++ `%SITE%` (la variable n’existe pas encore dans cette fenêtre)
+* `Nice`
+* Une erreur
+* `SITE`
+? `setx` écrit pour l’avenir. Ouvre une nouvelle invite pour la voir, ou fais aussi un `set` pour la session en cours.
+
+### LESSON c25 ¦ Conditions : if, else, errorlevel ¦ 3 ¦ Tester un fichier, une valeur, le résultat d’une commande, et ne pas tomber dans les pièges.
+>>> info ¦ Les formes de if
+```table
+Forme ¦ Vrai quand…
+`if exist C:\Logs\app.log …` ¦ le fichier ou dossier existe
+`if not exist D:\ …` ¦ il n’existe **pas** (`not` inverse n’importe quel test)
+`if "%REP%"=="O" …` ¦ les deux textes sont identiques (sensible à la casse)
+`if /i "%REP%"=="o" …` ¦ idem en **i**gnorant la casse
+`if defined SERVEUR …` ¦ la variable existe
+`if %ERRORLEVEL% neq 0 …` ¦ la dernière commande a échoué
+`if errorlevel 1 …` ¦ ERRORLEVEL **≥ 1** (attention !)
+```
+>>> info ¦ Pourquoi des guillemets autour des variables ?
+```code cmd
+if %REP%==O echo Oui
+```
+Si `REP` est vide, CMD lit `if ==O echo Oui` : **erreur de syntaxe**, le script s’arrête. Avec des guillemets, il lit `if ""=="O"` : simplement faux.
+!tip Règle : toujours `if "%VAR%"=="valeur"`.
+>>> qcm ¦ Que se passe-t-il avec `if %POSTE%==PC-RH-01 echo trouvé` si POSTE est vide ?
++ Erreur de syntaxe « ==PC-RH-01 était inattendu »
+* La condition est fausse, rien ne s’affiche
+* La condition est vraie
+* CMD demande la valeur de POSTE
+? D’où les guillemets : `if "%POSTE%"=="PC-RH-01"`.
+>>> info ¦ Les opérateurs de comparaison
+Pour comparer des **nombres**, `==` ne suffit pas (il compare du texte). CMD a des opérateurs en lettres :
+```table
+Opérateur ¦ Signification ¦ Moyen mnémotechnique
+`EQU` ¦ égal ¦ **EQU**al
+`NEQ` ¦ différent ¦ **N**ot **EQ**ual
+`LSS` ¦ inférieur ¦ **L**e**SS** than
+`LEQ` ¦ inférieur ou égal ¦ **L**ess or **EQ**ual
+`GTR` ¦ supérieur ¦ **G**rea**T**e**R**
+`GEQ` ¦ supérieur ou égal ¦ **G**reater or **EQ**ual
+```
+>>> fill cmd ¦ Robocopy renvoie 8 ou plus en cas d’échec. Complète le test du script de sauvegarde.
+```script cmd C:\Scripts\sauvegarde.bat
+robocopy "%SOURCE%" "%DEST%" /MIR /R:2 /W:5
+if %ERRORLEVEL% ___ 8 (
+    echo ECHEC de la sauvegarde
+    exit /b 1
+)
+```
+= GEQ
+~ EQU ;; LSS ;; >= ;; ==
+? Codes robocopy : 0 = rien à copier, 1 = copie OK, 2–7 = OK avec remarques, **8 et plus** = au moins un échec. `>=` n’existe pas en CMD (ce serait une redirection !).
+>>> info ¦ ERRORLEVEL : le code de retour
+Chaque commande renvoie un **code de sortie** : `0` = succès, autre chose = échec (ou information, selon l’outil). CMD le range dans `%ERRORLEVEL%`.
+
+Le piège historique : `if errorlevel 1` signifie « si ERRORLEVEL **est supérieur ou égal** à 1 », pas « égal à 1 ».
+```code cmd
+ping -n 1 SRV-APP01 > nul
+if errorlevel 1 (echo SRV-APP01 injoignable) else (echo SRV-APP01 OK)
+```
+>>> qcm ¦ Une commande renvoie ERRORLEVEL = 5. Lequel de ces tests est VRAI ?
++ `if errorlevel 1`
+* `if errorlevel 6`
+* `if %ERRORLEVEL% EQU 1`
+* `if not errorlevel 2`
+? `if errorlevel N` = « ≥ N ». 5 ≥ 1 : vrai. 5 ≥ 6 : faux. 5 = 1 : faux. `not errorlevel 2` = « < 2 » : faux.
+>>> info ¦ else et les parenthèses
+`else` doit être sur **la même ligne** que la parenthèse fermante du `if` :
+```script cmd C:\Scripts\verif.bat
+if exist "D:\Backup" (
+    echo Disque de sauvegarde présent
+) else (
+    echo ATTENTION : disque de sauvegarde absent
+    exit /b 2
+)
+```
+!warn `)` puis `else` sur la ligne suivante = erreur « else n’est pas reconnu en tant que commande interne ».
+>>> type cmd ¦ Affiche « absent » si le dossier D:\Archives n’existe pas.
+= if not exist D:\Archives echo absent ;; if not exist "D:\Archives" echo absent ;; if not exist D:\Archives\ echo absent ;; if not exist "D:\Archives\" echo absent ;; if not exist D:\Archives (echo absent) ;; if not exist "D:\Archives" (echo absent)
+? Ici rien ne s’affiche : D:\Archives existe. Essaie avec `D:\Inexistant` dans le terminal.
+>>> qcm ¦ Comment tester une réponse O ou o sans écrire deux if ?
++ `if /i "%REP%"=="O"`
+* `if "%REP%"=="O" or "o"`
+* `if "%REP%"~="O"`
+* `if %REP% EQU O /i`
+? `/i` = **i**gnore case : comparaison insensible à la casse.
+
+### LESSON c26 ¦ Boucles : for et ses variantes ¦ 3 ¦ Répéter sur des fichiers, des nombres, des lignes de CSV ou la sortie d’une commande.
+>>> info ¦ La boucle de base
+```code cmd
+for %i in (PC-COMPTA-01 PC-COMPTA-02 PC-RH-01) do ping -n 1 %i
+```
+```anatomy cmd
+for ¦ kw ¦ Début de la boucle.
+%i ¦ var ¦ La **variable de boucle** : une seule lettre, sensible à la casse (`%i` ≠ `%I`).
+in (PC-COMPTA-01 PC-COMPTA-02 PC-RH-01) ¦ arg ¦ L’**ensemble** à parcourir : mots séparés par des espaces, ou motif de fichiers (`*.log`).
+do ¦ kw ¦ « Fais » : la commande qui suit est exécutée pour chaque élément.
+ping -n 1 %i ¦ cmd ¦ La commande, où `%i` est remplacé par l’élément en cours.
+```
+>>> info ¦ %i ou %%i ?
+**La** règle qui piège tout le monde :
+- Dans l’**invite de commandes** : `%i`.
+- Dans un **fichier .bat** : `%%i` (deux pour cent).
+
+Pourquoi ? Dans un script, CMD consomme un `%` pour les variables comme `%DATE%`. Le doublement « protège » le second.
+>>> qcm ¦ Ce script affiche une erreur : `for %f in (*.log) do echo %f`. Pourquoi ?
++ Dans un fichier .bat, il faut écrire `%%f`
+* `*.log` n’est pas autorisé dans for
+* Il manque `/r`
+* `echo` ne fonctionne pas dans une boucle
+? Dans un script : `for %%f in (*.log) do echo %%f`.
+>>> info ¦ Les quatre commutateurs de for
+```table
+Forme ¦ Ce qu’elle parcourt ¦ Lettre
+`for %i in (…)` ¦ une liste de mots ou de fichiers ¦ —
+`for /l %i in (début,pas,fin)` ¦ une suite de **nombres** ¦ **L**oop / **L**ist numérique
+`for /d %i in (C:\Users\*)` ¦ des **dossiers** ¦ **D**irectories
+`for /r C:\Data %i in (*.pdf)` ¦ des fichiers dans **tous les sous-dossiers** ¦ **R**ecursive
+`for /f … %i in (fichier)` ¦ les **lignes** d’un fichier ou d’une commande, découpées en champs ¦ **F**ile / **F**ields
+```
+>>> type cmd ¦ Affiche les nombres de 1 à 5 (dans l’invite).
+= for /l %i in (1,1,5) do echo %i ;; for /l %i in (1,1,5) do @echo %i ;; for /L %i in (1,1,5) do echo %i ;; for /L %i in (1,1,5) do @echo %i
+? `(1,1,5)` = début 1, **pas** de 1, fin 5. Le `@` devant echo évite l’affichage de chaque commande.
+>>> info ¦ for /l : balayer une plage d’adresses
+```code cmd
+for /l %i in (60,1,62) do @ping -n 1 -w 300 192.168.10.%i | find "TTL"
+```
+```out
+Réponse de 192.168.10.60 : octets=32 temps<1ms TTL=128
+Réponse de 192.168.10.61 : octets=32 temps<1ms TTL=128
+```
+!it Tu cherches quels postes de la Compta sont allumés : un ping par adresse, `-w 300` réduit l’attente par adresse muette à 300 ms, `find "TTL"` ne garde que les vraies réponses.
+>>> info ¦ for /f : lire un CSV
+```code cmd
+for /f "skip=1 tokens=1,2 delims=;" %a in (C:\Data\nouveaux.csv) do @echo %b %a
+```
+```anatomy cmd
+/f ¦ sw ¦ Mode **f**ichier : lit ligne par ligne et découpe en **jetons** (champs).
+"skip=1 tokens=1,2 delims=;" ¦ str ¦ Les options, toutes dans une seule chaîne entre guillemets.
+skip=1 ¦ param ¦ **Saute** la 1re ligne (l’en-tête du CSV).
+tokens=1,2 ¦ param ¦ Garde les champs 1 et 2.
+delims=; ¦ param ¦ Les **délimiteurs** : ici le point-virgule (par défaut : espace et tabulation).
+%a ¦ var ¦ Reçoit le 1er jeton demandé ; le suivant arrive **automatiquement** dans `%b` (lettre suivante).
+```
+```out
+Durand Léa
+Faure Maxime
+Blanc Inès
+```
+>>> fill cmd ¦ Affiche le service (3e colonne) puis le prénom (1re colonne) de chaque nouvel arrivant.
+```code cmd
+for /f "skip=1 tokens=___ delims=;" %a in (C:\Data\nouveaux.csv) do @echo %b : %a
+```
+= 1,3
+~ 3,1 ;; 1-3 ;; 2,3
+? Les jetons sont toujours distribués **dans l’ordre** : le 1er champ dans `%a`, le 3e dans `%b`. `tokens=3,1` ne les inverse pas.
+>>> info ¦ for /f sur la sortie d’une commande
+Avec des **apostrophes** dans les parenthèses, `for /f` exécute la commande et lit sa sortie :
+```code cmd
+for /f "tokens=2 delims=:" %i in ('ipconfig ^| findstr IPv4') do @echo Mon IP :%i
+```
+- `'commande'` : exécute la commande.
+- `^|` : le pipe doit être **échappé** par `^` à l’intérieur des parenthèses, sinon CMD le prend pour lui.
+- `"usebackq"` change la convention : `` `commande` `` pour exécuter et `"fichier avec espaces.txt"` pour lire un fichier.
+>>> info ¦ Les modificateurs de variable de boucle
+Comme pour `%~dp0`, la variable de boucle accepte des modificateurs :
+```table
+Modificateur ¦ Résultat pour C:\Logs\app.log ¦ Lettre
+`%~fi` ¦ C:\Logs\app.log ¦ **f**ull path
+`%~di` ¦ C: ¦ **d**rive
+`%~pi` ¦ \Logs\ ¦ **p**ath
+`%~ni` ¦ app ¦ **n**ame
+`%~xi` ¦ .log ¦ e**x**tension
+`%~zi` ¦ 412 ¦ si**z**e (taille en octets)
+`%~ti` ¦ 07/10/2026 18:02 ¦ **t**ime (date de modification)
+`%~i` ¦ — ¦ retire les guillemets
+```
+>>> type cmd ¦ Pour chaque fichier .log de C:\Logs, affiche son nom sans extension et sa taille (dans l’invite).
+= for %i in (C:\Logs\*.log) do @echo %~ni %~zi ;; for %i in (C:\Logs\*.log) do echo %~ni %~zi ;; for %f in (C:\Logs\*.log) do @echo %~nf %~zf ;; for %f in (C:\Logs\*.log) do echo %~nf %~zf
+```out
+app 412
+backup_2026-10-06 953
+backup_2026-10-07 1240
+install 122
+```
+>>> info ¦ Variables modifiées dans une boucle : l’expansion retardée
+Piège avancé : CMD remplace les `%VAR%` **une seule fois**, quand il lit tout le bloc `( … )`. Une variable modifiée **dans** la boucle garde donc son ancienne valeur :
+```script cmd C:\Scripts\compte.bat
+@echo off
+setlocal enabledelayedexpansion
+set N=0
+for %%f in (C:\Logs\*.log) do (
+    set /a N+=1
+    echo Fichier !N! : %%~nxf
+)
+echo Total : %N%
+```
+- `setlocal enabledelayedexpansion` active l’**expansion retardée**.
+- `!N!` (points d’exclamation) est relue **à chaque tour**, alors que `%N%` resterait à 0.
+- `setlocal` rend aussi les variables **locales** au script : elles disparaissent à la fin (ou à `endlocal`).
+>>> qcm ¦ Dans une boucle, `set /a N+=1` puis `echo %N%` affiche toujours 0. Pourquoi ?
++ `%N%` est développée une seule fois, à la lecture du bloc : il faut l’expansion retardée et `!N!`
+* `set /a` ne fonctionne pas dans une boucle
+* N doit s’écrire en minuscules
+* Il faut `%%N%%`
+? C’est le piège le plus fréquent en batch avancé. `setlocal enabledelayedexpansion` + `!N!`.
+
+### LESSON c27 ¦ Étiquettes, goto, call, arguments et menus ¦ 3 ¦ Structurer un script en sous-programmes et lui passer des paramètres.
+>>> info ¦ Étiquettes et goto
+Une **étiquette** est une ligne qui commence par `:`. `goto` saute dessus :
+```script cmd C:\Scripts\verif_srv.bat
+@echo off
+ping -n 1 SRV-FICHIERS > nul
+if errorlevel 1 goto :erreur
+echo SRV-FICHIERS répond.
+goto :eof
+
+:erreur
+echo SRV-FICHIERS ne répond pas !
+exit /b 1
+```
+- `goto :eof` (**E**nd **O**f **F**ile) : étiquette spéciale, toujours définie, qui termine le script (ou le sous-programme).
+- Sans le `goto :eof`, le script « tomberait » dans la partie `:erreur`.
+>>> qcm ¦ Pourquoi `goto :eof` avant l’étiquette `:erreur` ?
++ Pour ne pas exécuter le bloc d’erreur quand tout va bien
+* Pour effacer l’écran
+* Parce que goto doit toujours être suivi d’une étiquette existante
+* Pour fermer la fenêtre CMD
+? Les étiquettes ne « bloquent » rien : l’exécution continue ligne après ligne. Il faut sauter par-dessus.
+>>> info ¦ Les arguments : %1 à %9 et %*
+Un script reçoit ce qu’on tape après son nom :
+```code cmd
+C:\Scripts\ping_poste.bat PC-RH-01 3
+```
+```table
+Variable ¦ Valeur ici ¦ Signification
+`%0` ¦ C:\Scripts\ping_poste.bat ¦ le script lui-même
+`%1` ¦ PC-RH-01 ¦ 1er argument
+`%2` ¦ 3 ¦ 2e argument
+`%*` ¦ PC-RH-01 3 ¦ **tous** les arguments
+`%~1` ¦ — ¦ le 1er argument **sans ses guillemets**
+```
+`shift` décale tout d’un cran (`%2` devient `%1`) : pratique au-delà de 9 arguments.
+>>> fill cmd ¦ Complète le script pour qu’il exige un nom de poste en argument.
+```script cmd C:\Scripts\ping_poste.bat
+@echo off
+if "___"=="" (
+    echo Usage : ping_poste.bat NOM_DU_POSTE
+    exit /b 1
+)
+ping -n 4 %1
+```
+= %~1
+~ %0 ;; %* ;; %~dp0
+? `"%~1"` : on retire d’éventuels guillemets puis on remet les nôtres, pour que `"%~1"==""` soit vrai si l’argument est absent.
+>>> info ¦ call : sous-programmes et autres scripts
+```script cmd C:\Scripts\journal.bat
+@echo off
+call :log "Début du script"
+robocopy C:\Data D:\Backup /MIR /NP > nul
+call :log "Fin, code robocopy %ERRORLEVEL%"
+goto :eof
+
+:log
+echo [%DATE% %TIME:~0,8%] %~1 >> C:\Logs\journal.log
+goto :eof
+```
+- `call :log "texte"` appelle le sous-programme `:log` avec un argument, puis **revient** à la ligne suivante.
+- `call autre.bat` lance un autre script et **revient** ensuite.
+!warn Sans `call`, lancer `autre.bat` depuis un script **ne revient jamais** : la suite du premier script est abandonnée.
+>>> qcm ¦ Un script appelle `maj.bat` (sans call) puis `echo Terminé`. Que voit-on ?
++ `maj.bat` s’exécute, mais « Terminé » ne s’affiche jamais
+* « Terminé » s’affiche avant maj.bat
+* Les deux scripts tournent en parallèle
+* Une erreur de syntaxe
+? Un .bat lancé directement **remplace** le script en cours. `call maj.bat` revient après.
+>>> info ¦ Un menu avec choice
+```script cmd C:\Scripts\menu.bat
+@echo off
+:menu
+cls
+echo 1. Vider le cache DNS
+echo 2. Renouveler l’adresse IP
+echo 3. Quitter
+choice /c 123 /n /m "Votre choix : "
+if errorlevel 3 goto :eof
+if errorlevel 2 goto :ip
+if errorlevel 1 goto :dns
+
+:dns
+ipconfig /flushdns
+pause
+goto :menu
+
+:ip
+ipconfig /release && ipconfig /renew
+pause
+goto :menu
+```
+```anatomy cmd
+choice ¦ cmd ¦ Attend l’appui sur une touche autorisée.
+/c 123 ¦ sw ¦ **C**hoices : les touches acceptées.
+/n ¦ sw ¦ **N**o display : n’affiche pas `[1,2,3]?` après le message.
+/m "Votre choix : " ¦ sw ¦ **M**essage affiché.
+```
+`choice` renvoie dans ERRORLEVEL la **position** de la touche : 1 pour la 1re, 2 pour la 2e… Comme `if errorlevel N` veut dire « ≥ N », on teste **du plus grand au plus petit**.
+>>> qcm ¦ Pourquoi teste-t-on `if errorlevel 3` AVANT `if errorlevel 1` ?
++ Parce que `if errorlevel 1` est vrai pour 1, 2 et 3 : il capturerait tout
+* Par convention d’écriture uniquement
+* Parce que choice renvoie les choix à l’envers
+* Pour aller plus vite
+? Avec « ≥ », on teste toujours du plus grand code au plus petit. Alternative moderne : `if %ERRORLEVEL% EQU 2`.
+>>> order cmd ¦ Construis la ligne qui propose O/N avec un message et un délai : réponse N par défaut après 10 secondes.
+~ choice ;; /c ON ;; /t 10 ;; /d N ;; /m "Redémarrer maintenant ?"
+x~ /n ;; /f
+? `/t` (**t**imeout) en secondes et `/d` (**d**efault) vont toujours ensemble.
+
+### LESSON c28 ¦ Projet : le script de diagnostic réseau ¦ 3 ¦ Lire et comprendre un vrai script d’équipe, ligne par ligne, puis l’améliorer.
+>>> info ¦ Le script de l’équipe
+Ton équipe a écrit ce script, lancé par les utilisateurs quand « Internet ne marche pas ». Lis-le une première fois en entier.
+```script cmd C:\Scripts\diag_reseau.bat
+@echo off
+chcp 65001 > nul
+title Diagnostic reseau
+echo ==== Diagnostic reseau du poste %COMPUTERNAME% ====
+echo.
+echo [1/4] Configuration IP
+ipconfig | findstr /i "IPv4 Passerelle"
+echo.
+echo [2/4] Passerelle
+ping -n 2 192.168.10.1 | findstr /i "Réponse perte"
+echo.
+echo [3/4] DNS
+nslookup srv-fichiers
+echo [4/4] Internet
+ping -n 2 8.8.8.8 | find "TTL"
+if errorlevel 1 (echo Internet KO) else (echo Internet OK)
+pause
+```
+>>> qcm ¦ Étape 1 : à quoi sert `findstr /i "IPv4 Passerelle"` ?
++ À n’afficher que les lignes contenant « IPv4 » OU « Passerelle »
+* À n’afficher que les lignes contenant la phrase exacte « IPv4 Passerelle »
+* À changer la passerelle
+* À tester la passerelle
+? Sans `/c:`, findstr considère chaque mot séparé par un espace comme un motif distinct (OU logique). `/i` ignore la casse.
+>>> qcm ¦ Pourquoi l’étape 2 teste-t-elle d’abord la passerelle (192.168.10.1) avant Internet ?
++ Pour savoir si le problème est sur le réseau local ou au-delà
+* Parce que la passerelle est plus rapide
+* Parce que ping ne fonctionne pas vers Internet
+* Pour renouveler l’adresse IP
+? Diagnostic **du plus proche au plus loin** : carte réseau → passerelle → DNS → Internet. La première étape qui échoue localise la panne.
+>>> qcm ¦ Étape 4 : `ping … | find "TTL"`, puis `if errorlevel 1`. D’où vient l’ERRORLEVEL testé ?
++ De `find` : 0 s’il a trouvé « TTL », 1 sinon
+* De ping : 0 si au moins un paquet est revenu
+* De la commande pause
+* De chcp
+? Dans un pipe, c’est la **dernière** commande qui fixe ERRORLEVEL. Et c’est voulu : ping peut renvoyer 0 même avec « Impossible de joindre l’hôte de destination », alors que « TTL » n’apparaît que dans une vraie réponse.
+>>> type cmd ¦ Lance le script de diagnostic.
+= C:\Scripts\diag_reseau.bat ;; call C:\Scripts\diag_reseau.bat ;; "C:\Scripts\diag_reseau.bat" ;; C:\Scripts\diag_reseau
+>>> info ¦ L’améliorer : garder une trace
+Les utilisateurs ferment la fenêtre avant de te lire le résultat au téléphone. Amélioration : **tout écrire dans un fichier** sur le partage informatique, nommé d’après le poste.
+```script cmd C:\Scripts\diag_reseau_v2.bat
+@echo off
+chcp 65001 > nul
+set "RAPPORT=%TEMP%\diag_%COMPUTERNAME%.txt"
+call :diag > "%RAPPORT%" 2>&1
+type "%RAPPORT%"
+copy /y "%RAPPORT%" "\\SRV-FICHIERS\IT$\Diagnostics\" > nul
+echo.
+echo Rapport envoyé au service informatique. Vous pouvez fermer cette fenêtre.
+pause
+goto :eof
+
+:diag
+echo Diagnostic du %DATE% à %TIME:~0,5% sur %COMPUTERNAME% (%USERNAME%)
+ipconfig /all
+ping -n 2 192.168.10.1
+nslookup srv-fichiers
+ping -n 2 8.8.8.8
+goto :eof
+```
+>>> qcm ¦ Que fait `call :diag > "%RAPPORT%" 2>&1` ?
++ Exécute tout le sous-programme et envoie sa sortie normale ET ses erreurs dans le fichier
+* Exécute :diag deux fois
+* Envoie seulement les erreurs dans le fichier
+* Crée une tâche planifiée
+? Rediriger un `call :label` capture **toute** la sortie du sous-programme d’un coup. `2>&1` envoie le flux d’erreur (2) au même endroit que la sortie standard (1).
+>>> fill cmd ¦ Ajoute la date au nom du rapport, au format aaaa-mm-jj.
+```code cmd
+set "RAPPORT=%TEMP%\diag_%COMPUTERNAME%_%DATE:___%-%DATE:___%-%DATE:___%.txt"
+```
+= ~6,4 ;; ~3,2 ;; ~0,2
+~ ~0,4 ;; ~2,3 ;; ~4,2
+? Année (position 6, 4 caractères), mois (3, 2), jour (0, 2) dans `jj/mm/aaaa`.
+>>> info ¦ Bilan de la piste CMD
+Tu sais maintenant :
+- naviguer, gérer les fichiers et copier en masse avec robocopy ;
+- diagnostiquer le réseau couche par couche ;
+- piloter services, processus, GPO, tâches, Registre, y compris **à distance sans WinRM** (`sc \\PC`, `tasklist /s`, `shutdown /m`, `reg \\PC`) ;
+- écrire des scripts batch robustes avec variables, conditions, boucles et sous-programmes.
+
+!tip Pour aller plus loin (objets, CSV, Active Directory, inventaire du parc), la piste **PowerShell** prend le relais : beaucoup de ce que tu as fait en 10 lignes de batch tient en une ligne de pipeline.

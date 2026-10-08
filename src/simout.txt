@@ -1,0 +1,876 @@
+@@ file:notes.txt
+À faire aujourd'hui (jeudi) :
+- Déverrouiller le compte de Marie Lefèvre (RH) : elle a appelé à 8h50
+- Vérifier la sauvegarde de cette nuit (journaux dans C:\Logs)
+- Imprimante de la réception bloquée : vider la file d'attente
+- Inventaire du parc pour la direction (Excel, séparateur ;)
+- PC-RECEP-02 ne répond plus depuis lundi ?
+- Poste lent signalé : regarder le processus "ScanAssist" (CPU élevé)
+- Préparer les comptes des 3 nouveaux arrivants (C:\Data\utilisateurs_a_creer.csv)
+@@ file:lisezmoi.txt
+Partage commun Contoso Hôtels
+Merci de ne pas stocker de fichiers personnels ici.
+Contact support : poste 1240 ou ticket Teams.
+@@ file:nouveaux.csv
+Prenom;Nom;Service;Poste;Debut
+Léa;Durand;Réception;Réceptionniste;12/10/2026
+Maxime;Faure;Comptabilité;Comptable;12/10/2026
+Inès;Blanc;Spa;Praticienne;19/10/2026
+@@ file:utilisateurs_a_creer.csv
+Prenom;Nom;Login;Service;Titre;OU
+Léa;Durand;ldurand;Réception;Réceptionniste;OU=Reception,OU=Utilisateurs,DC=contoso,DC=local
+Maxime;Faure;mfaure;Comptabilité;Comptable;OU=Comptabilite,OU=Utilisateurs,DC=contoso,DC=local
+Inès;Blanc;iblanc;Spa;Praticienne;OU=Spa,OU=Utilisateurs,DC=contoso,DC=local
+@@ file:backup_2026-10-06.log
+-------------------------------------------------------------------------------
+   ROBOCOPY     ::     Copie robuste de fichiers pour Windows
+-------------------------------------------------------------------------------
+
+  Début : mardi 6 octobre 2026 22:00:01
+   Source : C:\Data\
+     Dest : D:\Backup\
+
+  Options : *.* /S /E /DCOPY:DA /COPY:DAT /PURGE /MIR /NP /R:2 /W:5
+
+------------------------------------------------------------------------------
+
+	                   4	C:\Data\Compta\
+	    Plus récent     		 242.5 k	bilan_2025.xlsx
+
+------------------------------------------------------------------------------
+
+               Total    Copié   Ignoré  Discordance      ÉCHEC    Extras
+    Rép :         8         0         8         0         0         0
+Fichiers :        12         1        11         0         0         0
+  Octets :    6.24 m   242.5 k    6.00 m         0         0         0
+   Fin : mardi 6 octobre 2026 22:00:09
+@@ file:backup_2026-10-07.log
+-------------------------------------------------------------------------------
+   ROBOCOPY     ::     Copie robuste de fichiers pour Windows
+-------------------------------------------------------------------------------
+
+  Début : mercredi 7 octobre 2026 22:00:01
+   Source : C:\Data\
+     Dest : D:\Backup\
+
+  Options : *.* /S /E /DCOPY:DA /COPY:DAT /PURGE /MIR /NP /R:2 /W:5
+
+------------------------------------------------------------------------------
+
+	    Nouveau fichier  		  55.0 k	notes_de_frais.xlsx
+2026/10/07 22:00:04 ERREUR 32 (0x00000020) Copie du fichier C:\Data\RH\planning_octobre.xlsx
+Le processus ne peut pas accéder au fichier car ce fichier est utilisé par un autre processus.
+Attente de 5 secondes... Nouvelle tentative...
+2026/10/07 22:00:14 ERREUR : nombre de nouvelles tentatives LIMITE dépassé.
+
+------------------------------------------------------------------------------
+
+               Total    Copié   Ignoré  Discordance      ÉCHEC    Extras
+    Rép :         8         0         8         0         0         0
+Fichiers :        12         1        10         0         1         0
+  Octets :    6.30 m    55.0 k    6.16 m         0    86.0 k         0
+   Fin : mercredi 7 octobre 2026 22:00:14
+@@ file:app.log
+2026-10-08 08:31:02 INFO   Démarrage du service de réservation
+2026-10-08 08:31:05 WARN   Délai de réponse du PMS élevé (2300 ms)
+2026-10-08 08:35:40 INFO   Synchronisation des chambres : 212 chambres
+2026-10-08 08:40:11 ERREUR Connexion SQL refusée : SRV-APP01 injoignable
+2026-10-08 08:40:41 ERREUR Connexion SQL refusée : SRV-APP01 injoignable
+2026-10-08 08:41:00 INFO   Bascule sur la base de secours
+@@ file:install.log
+[23/09/2026 14:02:11] Installation de Veeam Agent 6.2.0.121
+[23/09/2026 14:04:55] Installation terminée, code de retour 0
+@@ file:install_imprimante.log
+[02/10/2026 10:14:02] Ajout de l'imprimante \\SRV-IMPRESSION\IMP-RECEP
+[02/10/2026 10:14:09] Pilote HP Universal Printing PCL 6 installé
+[02/10/2026 10:14:10] Imprimante par défaut définie
+@@ file:hosts
+# Copyright (c) 1993-2009 Microsoft Corp.
+#
+# Ceci est un exemple de fichier HOSTS utilisé par Microsoft TCP/IP pour Windows.
+#
+# Ce fichier contient les correspondances des adresses IP aux noms d'hôtes.
+# Chaque entrée doit être sur une ligne propre. L'adresse IP doit être placée
+# dans la première colonne, suivie par le nom d'hôte correspondant.
+#
+# localhost name resolution is handled within DNS itself.
+#	127.0.0.1       localhost
+#	::1             localhost
+192.168.10.10    intranet.contoso.local
+@@ file:sauvegarde.bat
+@echo off
+rem ============================================================
+rem  Sauvegarde nocturne de C:\Data vers D:\Backup
+rem  Planifiée chaque jour à 22:00 (compte SYSTEM)
+rem ============================================================
+set SOURCE=C:\Data
+set DEST=D:\Backup
+set LOG=C:\Logs\backup_%DATE:~6,4%-%DATE:~3,2%-%DATE:~0,2%.log
+
+echo Sauvegarde de %SOURCE% vers %DEST%...
+robocopy "%SOURCE%" "%DEST%" /MIR /R:2 /W:5 /NP /LOG+:"%LOG%"
+
+if %ERRORLEVEL% GEQ 8 (
+    echo ECHEC de la sauvegarde, code %ERRORLEVEL%
+    exit /b 1
+)
+echo Sauvegarde terminee (code robocopy %ERRORLEVEL%)
+exit /b 0
+@@ file:diag_reseau.bat
+@echo off
+chcp 65001 > nul
+title Diagnostic reseau
+echo ==== Diagnostic reseau du poste %COMPUTERNAME% ====
+echo.
+echo [1/4] Configuration IP
+ipconfig | findstr /i "IPv4 Passerelle"
+echo.
+echo [2/4] Passerelle
+ping -n 2 192.168.10.1 | findstr /i "Réponse perte"
+echo.
+echo [3/4] DNS
+nslookup srv-fichiers
+echo [4/4] Internet
+ping -n 2 8.8.8.8 | find "TTL"
+if errorlevel 1 (echo Internet KO) else (echo Internet OK)
+pause
+@@ file:inventaire.ps1
+<#
+.SYNOPSIS
+    Inventaire matériel des postes du domaine, sans WinRM (CIM en DCOM).
+.EXAMPLE
+    .\inventaire.ps1 -Sortie C:\Temp\parc.csv
+#>
+param(
+    [string]$OU = "OU=Postes,OU=Ordinateurs,DC=contoso,DC=local",
+    [string]$Sortie = "C:\Temp\inventaire_parc.csv"
+)
+
+$opt = New-CimSessionOption -Protocol Dcom
+$resultats = foreach ($pc in Get-ADComputer -Filter 'Enabled -eq $true' -SearchBase $OU) {
+    $nom = $pc.Name
+    if (-not (Test-Connection -ComputerName $nom -Count 1 -Quiet)) {
+        Write-Warning "$nom injoignable"
+        [PSCustomObject]@{ Poste = $nom; Etat = 'Hors ligne'; Modele = ''; Serie = ''; RAM_Go = ''; OS = '' }
+        continue
+    }
+    $s    = New-CimSession -ComputerName $nom -SessionOption $opt
+    $cs   = Get-CimInstance Win32_ComputerSystem -CimSession $s
+    $bios = Get-CimInstance Win32_BIOS -CimSession $s
+    $os   = Get-CimInstance Win32_OperatingSystem -CimSession $s
+    Remove-CimSession $s
+    [PSCustomObject]@{
+        Poste  = $nom
+        Etat   = 'En ligne'
+        Modele = $cs.Model
+        Serie  = $bios.SerialNumber
+        RAM_Go = [math]::Round($cs.TotalPhysicalMemory / 1GB)
+        OS     = $os.Caption
+    }
+}
+$resultats | Export-Csv -Path $Sortie -NoTypeInformation -Delimiter ';' -Encoding UTF8
+Write-Host "Inventaire terminé : $($resultats.Count) postes -> $Sortie" -ForegroundColor Green
+@@ file:nettoyage_temp.ps1
+# Supprime les fichiers temporaires de plus de N jours (simulation par défaut)
+param([int]$Jours = 7, [switch]$Executer)
+
+$limite   = (Get-Date).AddDays(-$Jours)
+$dossiers = 'C:\Temp', "$env:TEMP", 'C:\Windows\Temp'
+$cibles   = Get-ChildItem -Path $dossiers -File -Recurse -ErrorAction SilentlyContinue |
+    Where-Object { $_.LastWriteTime -lt $limite }
+
+$taille = ($cibles | Measure-Object -Property Length -Sum).Sum
+"{0} fichier(s), {1:N1} Mo à libérer" -f $cibles.Count, ($taille / 1MB)
+
+if ($Executer) {
+    $cibles | Remove-Item -Force -ErrorAction SilentlyContinue
+    Write-Host "Nettoyage effectué." -ForegroundColor Green
+} else {
+    Write-Host "Simulation uniquement : relance avec -Executer pour supprimer." -ForegroundColor Yellow
+}
+@@ help
+Pour plus d’informations sur une commande spécifique, entrez HELP suivi de la commande,
+ou la commande suivie de /? (exemple : DIR /?).
+Commandes disponibles dans ce simulateur (les principales) :
+
+FICHIERS     ATTRIB  CD  COPY  DEL  DIR  FIND  FINDSTR  MD  MORE  MOVE  RD  REN
+             ROBOCOPY  SORT  TREE  TYPE  WHERE  XCOPY  FC  ICACLS  TAKEOWN  CERTUTIL
+RÉSEAU       ARP  GETMAC  IPCONFIG  NETSH  NETSTAT  NSLOOKUP  PATHPING  PING  ROUTE
+             TRACERT  NET USE  NET VIEW  NET SHARE
+SYSTÈME      CHKDSK  DISM  GPRESULT  GPUPDATE  HOSTNAME  REG  SC  SCHTASKS  SFC
+             SHUTDOWN  SYSTEMINFO  TASKKILL  TASKLIST  VER  WHOAMI  POWERCFG
+DOMAINE      NET USER /DOMAIN  NET GROUP /DOMAIN  NLTEST  KLIST  W32TM  DSQUERY
+             QUSER  LOGOFF  MSG  PSEXEC  CMDKEY  DCDIAG  REPADMIN
+SCRIPTS      CALL  CHOICE  ECHO  FOR  GOTO  IF  PAUSE  SET  SETX  TIMEOUT  (+ .bat)
+SHELL        CLS  CMD  EXIT  POWERSHELL  START  TITLE
+
+Astuces : flèche haut = commande précédente, Tab = complétion, cd /d D:\ = changer de lecteur.
+@@ robocopy_usage
+
+-------------------------------------------------------------------------------
+   ROBOCOPY     ::     Copie robuste de fichiers pour Windows
+-------------------------------------------------------------------------------
+
+  Utilisation :: ROBOCOPY source destination [fichier [fichier]...] [options]
+
+    source :: répertoire source (lecteur:\chemin ou \\serveur\partage\chemin).
+  destination :: répertoire de destination (lecteur:\chemin ou \\serveur\partage\chemin).
+
+  Options courantes : /E /MIR /Z /B /R:n /W:n /MT[:n] /LOG:fichier /L /XO /XF /XD /NP
+  Tape robocopy /? pour l’aide complète.
+@@ ping_usage
+
+Utilisation : ping [-t] [-a] [-n nombre] [-l taille] [-f] [-i TTL] [-v TypeServ]
+            [-r nombre] [-s nombre] [[-j listeHôtes] | [-k listeHôtes]]
+            [-w délai] [-R] [-S srcaddr] [-c compartiment] [-p]
+            [-4] [-6] nom_cible
+@@ arp
+
+Interface : 192.168.10.42 --- 0xc
+  Adresse Internet      Adresse physique      Type
+  192.168.10.1          00-1a-8c-4f-22-01     dynamique
+  192.168.10.5          00-15-5d-0a-05-11     dynamique
+  192.168.10.6          00-15-5d-0a-05-12     dynamique
+  192.168.10.10         00-15-5d-0a-0a-21     dynamique
+  192.168.10.61         d4-81-d7-11-6e-61     dynamique
+  192.168.10.150        3c-52-82-9e-10-96     dynamique
+  192.168.10.255        ff-ff-ff-ff-ff-ff     statique
+  224.0.0.22            01-00-5e-00-00-16     statique
+  224.0.0.251           01-00-5e-00-00-fb     statique
+@@ route
+===========================================================================
+Liste d’Interfaces
+ 12...d4 81 d7 3a 6e 2c ......Intel(R) Ethernet Connection (17) I219-LM
+  7...70 a8 d3 11 42 9b ......Intel(R) Wi-Fi 6E AX211 160MHz
+  1...........................Software Loopback Interface 1
+===========================================================================
+
+IPv4 Table de routage
+===========================================================================
+Itinéraires actifs :
+Destination réseau    Masque réseau  Adr. passerelle   Adr. interface Métrique
+          0.0.0.0          0.0.0.0     192.168.10.1    192.168.10.42     25
+        127.0.0.0        255.0.0.0         On-link         127.0.0.1    331
+     192.168.10.0    255.255.255.0         On-link     192.168.10.42    281
+    192.168.10.42  255.255.255.255         On-link     192.168.10.42    281
+   192.168.10.255  255.255.255.255         On-link     192.168.10.42    281
+===========================================================================
+Itinéraires persistants :
+  Aucun
+@@ getmac
+
+Adresse physique    Nom du transport
+=================== ==========================================================
+D4-81-D7-3A-6E-2C   \Device\Tcpip_{8C1D2F44-0A5E-4F62-9C11-77E0B1D9A0C3}
+70-A8-D3-11-42-9B   Média déconnecté
+@@ getmac_v
+
+Nom de la connexion Carte réseau    Adresse physique    Nom du transport
+=================== =============== =================== ==========================================================
+Ethernet            Intel(R) Ethern D4-81-D7-3A-6E-2C   \Device\Tcpip_{8C1D2F44-0A5E-4F62-9C11-77E0B1D9A0C3}
+Wi-Fi               Intel(R) Wi-Fi  70-A8-D3-11-42-9B   Média déconnecté
+@@ netsh_wlan_profiles
+
+Profils sur l’interface Wi-Fi :
+
+Profils de stratégie de groupe (lecture seule)
+---------------------------------
+    CONTOSO-STAFF
+
+Profils utilisateurs
+--------------------
+    Profil Tous les utilisateurs : CONTOSO-GUEST
+    Profil Tous les utilisateurs : Livebox-Accueil
+@@ netsh_wlan_key
+
+Le profil CONTOSO-GUEST sur l’interface Wi-Fi :
+=======================================================================
+
+Appliqué : Profil de tous les utilisateurs
+
+Informations de profil
+-------------------
+    Version                : 1
+    Type                   : LAN sans fil
+    Nom                    : CONTOSO-GUEST
+    Options de contrôle    :
+        Mode de connexion  : Connexion automatique
+
+Paramètres de sécurité
+-----------------
+    Authentification       : WPA2 - Personnel
+    Chiffrement            : CCMP
+    Clé de sécurité        : Présent
+    Contenu de la clé      : Bienvenue-Contoso2026
+@@ netsh_wlan_if
+
+Il existe 1 interface sur le système :
+
+    Nom                    : Wi-Fi
+    Description            : Intel(R) Wi-Fi 6E AX211 160MHz
+    Adresse physique       : 70:a8:d3:11:42:9b
+    État                   : déconnecté
+    Radio de diffusion     : Matériel Activé
+@@ netsh_ip_config
+
+Configuration pour l’interface « Ethernet »
+    DHCP activé :                         Oui
+    Adresse IP :                           192.168.10.42
+    Préfixe de sous-réseau :               192.168.10.0/24 (masque 255.255.255.0)
+    Passerelle par défaut :                192.168.10.1
+    Métrique de passerelle :               0
+    Métrique de l’interface :              25
+    Serveurs DNS configurés via DHCP :     192.168.10.5
+                                          192.168.10.6
+    Inscrire avec le suffixe :             Principale uniquement
+    Serveurs WINS configurés via DHCP :    Aucun
+@@ netsh_if
+
+État admin     État          Type             Nom de l’interface
+-------------------------------------------------------------------------
+Activé         Connecté      Dédié            Ethernet
+Activé         Déconnecté    Dédié            Wi-Fi
+@@ netsh_fw
+
+Paramètres Profil de domaine :
+----------------------------------------------------------------------
+État                                  ACTIVER
+
+Paramètres Profil privé :
+----------------------------------------------------------------------
+État                                  ACTIVER
+
+Paramètres Profil public :
+----------------------------------------------------------------------
+État                                  ACTIVER
+Ok.
+@@ whoami_user
+
+INFORMATIONS SUR L’UTILISATEUR
+------------------------------
+
+Nom d’utilisateur Identificateur de sécurité
+================= ============================================
+contoso\it.tech   S-1-5-21-3623811015-3361044348-30300820-1115
+@@ whoami_groups
+
+INFORMATIONS DE GROUPE
+----------------------
+
+Nom du groupe                                  Type              SID                                           Attributs
+============================================== ================= ============================================= ==================================================
+Tout le monde                                  Groupe bien connu S-1-1-0                                       Groupe obligatoire, Activé par défaut, Groupe activé
+BUILTIN\Administrateurs                        Alias             S-1-5-32-544                                  Groupe obligatoire, Activé par défaut, Groupe activé, Propriétaire du groupe
+BUILTIN\Utilisateurs                           Alias             S-1-5-32-545                                  Groupe obligatoire, Activé par défaut, Groupe activé
+AUTORITE NT\INTERACTIF                         Groupe bien connu S-1-5-4                                       Groupe obligatoire, Activé par défaut, Groupe activé
+AUTORITE NT\Utilisateurs authentifiés          Groupe bien connu S-1-5-11                                      Groupe obligatoire, Activé par défaut, Groupe activé
+CONTOSO\Admins du domaine                      Groupe            S-1-5-21-3623811015-3361044348-30300820-512   Groupe obligatoire, Activé par défaut, Groupe activé
+CONTOSO\GG_IT                                  Groupe            S-1-5-21-3623811015-3361044348-30300820-1122  Groupe obligatoire, Activé par défaut, Groupe activé
+CONTOSO\GG_VPN                                 Groupe            S-1-5-21-3623811015-3361044348-30300820-1124  Groupe obligatoire, Activé par défaut, Groupe activé
+Étiquette obligatoire\Niveau obligatoire élevé Étiquette         S-1-16-12288
+@@ whoami_priv
+
+INFORMATIONS DE PRIVILÈGES
+--------------------------
+
+Nom de privilège                Description                                           État
+=============================== ===================================================== =========
+SeShutdownPrivilege             Arrêter le système                                    Désactivé
+SeChangeNotifyPrivilege         Contourner la vérification de parcours                Activé
+SeBackupPrivilege               Sauvegarder les fichiers et les répertoires           Désactivé
+SeRestorePrivilege              Restaurer les fichiers et les répertoires             Désactivé
+SeDebugPrivilege                Déboguer les programmes                               Désactivé
+SeTakeOwnershipPrivilege        Prendre possession de fichiers ou d’autres objets     Désactivé
+SeSystemtimePrivilege           Modifier l’heure système                              Désactivé
+SeRemoteShutdownPrivilege       Forcer l’arrêt à partir d’un système distant          Désactivé
+@@ sc_usage
+DESCRIPTION :
+        SC est un programme en ligne de commande qui permet de communiquer avec
+        le Gestionnaire de contrôle des services et les services.
+UTILISATION :
+        sc <serveur> [commande] [nom du service] <option1> <option2>...
+
+        Commandes courantes : query, queryex, qc, start, stop, config, description, failure, delete
+        Exemples : sc query spooler | sc \\PC-COMPTA-02 query spooler | sc config wuauserv start= disabled
+        ATTENTION : l’espace APRÈS le signe = est obligatoire (start= auto).
+@@ net_usage
+La syntaxe de cette commande est :
+
+NET
+    [ ACCOUNTS | COMPUTER | CONFIG | CONTINUE | FILE | GROUP | HELP |
+      HELPMSG | LOCALGROUP | PAUSE | SESSION | SHARE | START |
+      STATISTICS | STOP | TIME | USE | USER | VIEW ]
+@@ net_accounts
+La demande sera traitée sur un contrôleur de domaine pour le domaine contoso.local.
+
+Fermeture forcée de session après expiration du temps :  Jamais
+Durée de vie minimale du mot de passe (jours) :           1
+Durée de vie maximale du mot de passe (jours) :           90
+Longueur minimale du mot de passe :                      12
+Longueur de l’historique des mots de passe :             24
+Seuil de verrouillage :                                  5
+Durée du verrouillage (minutes) :                        30
+Fenêtre d’observation du verrouillage (minutes) :        30
+Rôle de l’ordinateur :                                   STATION DE TRAVAIL
+@@ gpresult_usage
+
+GPRESULT [/S système [/U utilisateur [/P [mot_de_passe]]]] [/SCOPE étendue]
+           [/USER utilisateur_cible] [/R | /V | /Z] [(/X | /H) <nom_fichier> [/F]]
+
+Exemples : gpresult /r   |   gpresult /r /scope computer   |   gpresult /h C:\Temp\gpo.html
+@@ gpresult_r
+
+Outil de résultat du système d’exploitation Microsoft (R) Windows (R) v2.0
+© Microsoft Corporation. Tous droits réservés.
+
+Créé le {{DATE}} à {{HEURE}}
+
+
+Données RSOP pour CONTOSO\it.tech sur PC-IT-01 : mode de journalisation
+------------------------------------------------------------------------
+
+Configuration du système d’exploitation :  Station de travail membre
+Version du système d’exploitation :        10.0.26100
+Nom du site :                              Default-First-Site-Name
+Profil itinérant :                         N/A
+Profil local :                             C:\Users\it.tech
+Connecté via une liaison lente ? :         Non
+
+
+PARAMÈTRES DE L’ORDINATEUR
+-------------------------
+    CN=PC-IT-01,OU=Postes,OU=Ordinateurs,DC=contoso,DC=local
+    Dernière application de la stratégie de groupe : {{DATE}} à 10:58:03
+    Stratégie de groupe appliquée depuis :          SRV-AD01.contoso.local
+    Seuil de liaison lente de la stratégie :        500 kbps
+    Nom du domaine :                                CONTOSO
+    Type de domaine :                               Windows 2008 ou version ultérieure
+
+    Objets Stratégie de groupe appliqués
+    -------------------------------------
+        GPO_Postes_Securite
+        GPO_Postes_WindowsUpdate
+        GPO_Postes_Imprimantes
+        Default Domain Policy
+
+    Les GPO suivants n’ont pas été appliqués car ils ont été filtrés
+    -------------------------------------------------------------------
+        GPO_Serveurs_Baseline
+            Filtrage :  Non appliqué (vide)
+
+        GPO_Postes_Kiosque_Reception
+            Filtrage :  Refusé (filtrage de sécurité)
+
+    L’ordinateur fait partie des groupes de sécurité suivants
+    ---------------------------------------------------------
+        BUILTIN\Administrateurs
+        Tout le monde
+        Utilisateurs authentifiés
+        PC-IT-01$
+        Ordinateurs du domaine
+        Niveau obligatoire système
+
+
+PARAMÈTRES UTILISATEUR
+---------------------
+    CN=IT Tech,OU=Informatique,OU=Utilisateurs,DC=contoso,DC=local
+    Dernière application de la stratégie de groupe : {{DATE}} à 10:58:05
+    Stratégie de groupe appliquée depuis :          SRV-AD01.contoso.local
+    Seuil de liaison lente de la stratégie :        500 kbps
+    Nom du domaine :                                CONTOSO
+    Type de domaine :                               Windows 2008 ou version ultérieure
+
+    Objets Stratégie de groupe appliqués
+    -------------------------------------
+        GPO_Utilisateurs_Lecteurs_Reseau
+        GPO_Utilisateurs_Fond_Ecran
+
+    Les GPO suivants n’ont pas été appliqués car ils ont été filtrés
+    -------------------------------------------------------------------
+        Local Group Policy
+            Filtrage :  Non appliqué (vide)
+
+    L’utilisateur fait partie des groupes de sécurité suivants
+    ----------------------------------------------------------
+        Utilisateurs du domaine
+        Tout le monde
+        BUILTIN\Administrateurs
+        GG_IT
+        GG_VPN
+        Admins du domaine
+        Niveau obligatoire élevé
+@@ gpresult_z
+    (Le mode /Z ajoute le détail de chaque paramètre : stratégies de mot de passe, scripts, mappages de lecteurs...)
+@@ shutdown_usage
+Utilisation : shutdown [/i | /l | /s | /sg | /r | /g | /a | /p | /h | /e | /o] [/hybrid] [/soft] [/fw] [/f]
+    [/m \\ordinateur][/t xxx][/d [p|u:]xx:yy [/c "commentaire"]]
+
+    /s   Arrêt     /r   Redémarrage     /l   Fermeture de session     /a   Annulation
+    /t   Délai en secondes     /f   Force la fermeture des applications     /m   Ordinateur distant
+@@ sfc_scan
+
+Démarrage de l’analyse du système. Ce processus va prendre un certain temps.
+
+Démarrage de la phase de vérification de l’analyse du système.
+La vérification est terminée à 100 %.
+
+Le programme de protection des ressources Windows a trouvé des fichiers corrompus et les a réparés.
+Pour les réparations en ligne, les détails sont inclus dans le fichier journal CBS situé dans
+windir\Logs\CBS\CBS.log. Par exemple C:\Windows\Logs\CBS\CBS.log. Pour les réparations hors connexion,
+les détails sont inclus dans le fichier journal fourni par l’indicateur /OFFLOGFILE.
+@@ sfc_verify
+
+Démarrage de l’analyse du système. Ce processus va prendre un certain temps.
+
+La vérification est terminée à 100 %.
+
+La protection des ressources Windows n’a trouvé aucune violation d’intégrité.
+@@ sfc_usage
+
+Microsoft (R) Windows (R) Resource Checker Version 6.0
+Copyright (C) Microsoft Corporation. Tous droits réservés.
+
+Analyse l’intégrité de tous les fichiers système protégés et remplace les versions incorrectes par les versions Microsoft correctes.
+
+SFC [/SCANNOW] [/VERIFYONLY] [/SCANFILE=<fichier>] [/VERIFYFILE=<fichier>]
+    [/OFFWINDIR=<répertoire windows hors connexion> /OFFBOOTDIR=<répertoire de démarrage hors connexion>]
+@@ dism_check
+
+Outil Gestion et maintenance des images de déploiement
+Version : 10.0.26100.1
+
+Version de l’image : 10.0.26100.2033
+
+Aucune altération du magasin des composants n’a été détectée.
+L’opération a réussi.
+@@ dism_scan
+
+Outil Gestion et maintenance des images de déploiement
+Version : 10.0.26100.1
+
+Version de l’image : 10.0.26100.2033
+
+[==========================100.0%==========================]
+Le magasin des composants peut être réparé.
+L’opération a réussi.
+@@ dism_restore
+
+Outil Gestion et maintenance des images de déploiement
+Version : 10.0.26100.1
+
+Version de l’image : 10.0.26100.2033
+
+[==========================100.0%==========================] L’opération de restauration s’est terminée correctement.
+L’opération a réussi.
+@@ dism_cleanup
+
+Outil Gestion et maintenance des images de déploiement
+Version : 10.0.26100.1
+
+Version de l’image : 10.0.26100.2033
+
+[==========================100.0%==========================]
+L’opération a réussi.
+@@ dism_caps
+
+Outil Gestion et maintenance des images de déploiement
+Version : 10.0.26100.1
+
+Liste des fonctionnalités :
+
+Identité de la fonctionnalité : Rsat.ActiveDirectory.DS-LDS.Tools~~~~0.0.1.0
+État : Installé
+
+Identité de la fonctionnalité : Rsat.Dns.Tools~~~~0.0.1.0
+État : Non présent
+
+Identité de la fonctionnalité : WMIC~~~~
+État : Non présent
+
+L’opération a réussi.
+@@ chkdsk
+Le type du système de fichiers est NTFS.
+Le nom de volume est OS.
+
+AVERTISSEMENT : le paramètre /F n’a pas été spécifié.
+Exécution de CHKDSK en mode lecture seule.
+
+Étape 1 : examen de la structure du système de fichiers de base…
+  641536 enregistrements de fichier traités.
+Vérification des fichiers terminée.
+Étape 2 : examen de la liaison des noms de fichiers…
+Vérification des index terminée.
+Étape 3 : examen des descripteurs de sécurité…
+Vérification des descripteurs de sécurité terminée.
+
+Windows a analysé le système de fichiers sans trouver de problème.
+Aucune autre action n’est requise.
+
+ 535822335 Ko d’espace disque total.
+ 494876820 Ko dans 412300 fichiers.
+     40268456 Ko disponibles sur le disque.
+@@ reg_usage
+
+REG Opération [Liste des paramètres]
+
+  Opération  == [ QUERY   | ADD    | DELETE  | COPY    |
+                  SAVE    | LOAD   | UNLOAD  | RESTORE |
+                  COMPARE | EXPORT | IMPORT  | FLAGS ]
+
+Exemples : reg query "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion" /v DisplayVersion
+           reg add HKCU\Software\Contoso /v Test /t REG_DWORD /d 1 /f
+@@ icacls_usage
+ICACLS nom /save fichierACL [/T] [/C] [/L] [/Q]
+ICACLS nom /grant[:r] Sid:perm[...] [/T] [/C] [/L] [/Q]
+ICACLS nom /remove[:g|:d]] Sid[...] [/T] [/C] [/L] [/Q]
+ICACLS nom /inheritance:e|d|r [/T]
+    perm : F (contrôle total), M (modification), RX (lecture et exécution), R (lecture), W (écriture)
+    (OI) héritage objet, (CI) héritage conteneur, (IO) héritage seul, (I) hérité
+@@ klist
+
+ID d’ouverture de session actuel : 0:0x3e7a2f
+
+Tickets mis en cache : (3)
+
+#0>	Client : it.tech @ CONTOSO.LOCAL
+	Serveur : krbtgt/CONTOSO.LOCAL @ CONTOSO.LOCAL
+	Type de chiffrement KerbTicket : AES-256-CTS-HMAC-SHA1-96
+	Heure de démarrage : 10/8/2026 7:58:44 (local)
+	Heure de fin :   10/8/2026 17:58:44 (local)
+	Fournisseur d’authentification : SRV-AD01.contoso.local
+
+#1>	Client : it.tech @ CONTOSO.LOCAL
+	Serveur : cifs/SRV-FICHIERS.contoso.local @ CONTOSO.LOCAL
+	Type de chiffrement KerbTicket : AES-256-CTS-HMAC-SHA1-96
+	Heure de fin :   10/8/2026 17:58:44 (local)
+
+#2>	Client : it.tech @ CONTOSO.LOCAL
+	Serveur : ldap/SRV-AD01.contoso.local @ CONTOSO.LOCAL
+	Type de chiffrement KerbTicket : AES-256-CTS-HMAC-SHA1-96
+	Heure de fin :   10/8/2026 17:58:44 (local)
+@@ klist_tgt
+
+Ticket TGT mis en cache :
+
+ServiceName        : krbtgt
+TargetName (SPN)   : krbtgt
+ClientName         : it.tech
+DomainName         : CONTOSO.LOCAL
+TargetDomainName   : CONTOSO.LOCAL
+TicketFlags        : 0x40e10000 -> forwardable renewable initial pre_authent name_canonicalize
+@@ w32tm_status
+Indicateur de saut : 0(aucun avertissement)
+Couche : 3 (référence secondaire - synchronisée par (S)NTP)
+Précision : -23 (119.209ns par graduation)
+Délai de racine : 0.0312500s
+Dispersion de racine : 7.8231023s
+ID de référence : 0xC0A80A05 (IP de la source : 192.168.10.5)
+Dernière synchronisation réussie : {{T}}
+Source : SRV-AD01.contoso.local
+Intervalle d’interrogation : 10 (1024s)
+@@ w32tm_peers
+#Homologues : 1
+
+Homologue : SRV-AD01.contoso.local
+État : Actif
+Temps restant : 812.4320312s
+Mode : 1 (Symétrique actif)
+Couche : 2 (référence secondaire - synchronisée par (S)NTP)
+@@ w32tm_strip
+Suivi de SRV-AD01 [192.168.10.5:123].
+L’heure actuelle est 08/10/2026 11:30:00.
+11:30:00, d:+00.0012345s o:-00.0004123s  [                           *                           ]
+11:30:02, d:+00.0011876s o:-00.0003998s  [                           *                           ]
+@@ w32tm_usage
+w32tm /query /status | /query /source | /query /peers | /resync | /stripchart /computer:<cible>
+@@ nltest_dsgetdc
+           CD : \\SRV-AD01.contoso.local
+      Adresse : \\192.168.10.5
+     GUID dom : 4c2d1a77-9f1e-4f3a-8b61-0a5e3c2b9d10
+     Nom dom : contoso.local
+  Nom forêt : contoso.local
+  Nom du site du CD : Default-First-Site-Name
+Nom de notre site : Default-First-Site-Name
+      Indicateurs : PDC GC DS LDAP KDC TIMESERV WRITABLE DNS_DC DNS_DOMAIN DNS_FOREST CLOSE_SITE FULL_SECRET WS DS_8 DS_9 DS_10 KEYLIST
+La commande a été correctement exécutée
+@@ nltest_sc_verify
+Indicateurs : b0 HAS_IP  HAS_TIMESERV
+Connexion d’approbation Status = 0 0x0 NERR_Success
+Contrôleur de domaine approuvé \\SRV-AD01.contoso.local
+Statut de vérification d’approbation = 0 0x0 NERR_Success
+La commande a été correctement exécutée
+@@ nltest_sc_query
+Indicateurs : 30 HAS_IP  HAS_TIMESERV
+Contrôleur de domaine approuvé \\SRV-AD01.contoso.local
+Connexion d’approbation Status = 0 0x0 NERR_Success
+La commande a été correctement exécutée
+@@ nltest_dclist
+Obtenir la liste des CD dans le domaine « contoso.local » à partir de « \\SRV-AD01.contoso.local ».
+    SRV-AD01.contoso.local [PDC]  [DS] Site : Default-First-Site-Name
+    SRV-AD02.contoso.local        [DS] Site : Default-First-Site-Name
+La commande a été correctement exécutée
+@@ nltest_trusts
+Liste des approbations de domaine :
+    0: CONTOSO contoso.local (NT 5) (Forest Tree Root) (Primary Domain) (Native)
+La commande a été correctement exécutée
+@@ cmdkey
+
+Actuellement stockés, informations d’identification :
+
+    Cible : Domain:target=SRV-FICHIERS
+    Type : Mot de passe du domaine
+    Utilisateur : CONTOSO\it.tech
+
+    Cible : LegacyGeneric:target=MicrosoftOffice16_Data:SSPI:it.tech@contoso-hotels.com
+    Type : Générique
+    Utilisateur : it.tech@contoso-hotels.com
+    Locale persistante
+
+    Cible : Domain:target=PC-RECEP-02
+    Type : Mot de passe du domaine
+    Utilisateur : CONTOSO\mlefevre
+@@ managebde
+BitLocker Drive Encryption: Configuration Tool version 10.0.26100
+Copyright (C) 2013 Microsoft Corporation. Tous droits réservés.
+
+Volumes de disque pouvant être protégés par
+Chiffrement de lecteur BitLocker :
+Volume C: [OS]
+[Volume du système d’exploitation]
+
+    Taille :                       511,00 Go
+    Version de BitLocker :         2.0
+    État de la conversion :        Chiffrement intégral
+    Pourcentage chiffré :          100,0 %
+    Méthode de chiffrement :       XTS-AES 128
+    État de la protection :        Protection activée
+    État du verrouillage :         Déverrouillé
+    Protecteurs de clés :
+        TPM
+        Mot de passe numérique
+@@ powercfg_a
+Les états de veille suivants sont disponibles sur ce système :
+    Veille (S0 Faible consommation d’énergie en veille) Connecté au réseau
+    Veille prolongée
+    Démarrage rapide
+
+Les états de veille suivants ne sont pas disponibles sur ce système :
+    Veille (S1) (S2) (S3)
+        Le microprogramme système ne prend pas en charge cet état de veille.
+@@ driverquery
+
+Nom de module Nom complet                   Type de pilote Date de liaison
+============= ============================= ============== ======================
+1394ohci      Contrôleur hôte compatible OH Kernel
+ACPI          Pilote ACPI Microsoft         Kernel
+e1dexpress    Intel(R) PRO/1000 PCI Express Kernel
+Netwtw14      Intel® Wireless WiFi Link 4   Kernel
+rdyboost      ReadyBoost                    Kernel
+@@ dcdiag
+
+Diagnostic du serveur d’annuaire
+
+Exécution de l’installation initiale :
+   Tentative de recherche de serveur associé...
+   Le serveur associé est SRV-AD01
+   * Forêt AD identifiée.
+   Collecte des informations initiales terminée.
+
+Exécution des tests initiaux requis
+
+   Test du serveur : Default-First-Site-Name\SRV-AD01
+      Démarrage du test : Connectivity
+         ......................... Le test Connectivity de SRV-AD01 a réussi
+
+Exécution des tests principaux
+
+   Test du serveur : Default-First-Site-Name\SRV-AD01
+      Démarrage du test : Advertising
+         ......................... Le test Advertising de SRV-AD01 a réussi
+      Démarrage du test : FSMOCheck
+         ......................... Le test FSMOCheck de SRV-AD01 a réussi
+      Démarrage du test : Replications
+         ......................... Le test Replications de SRV-AD01 a réussi
+      Démarrage du test : Services
+         ......................... Le test Services de SRV-AD01 a réussi
+      Démarrage du test : SysVolCheck
+         ......................... Le test SysVolCheck de SRV-AD01 a réussi
+@@ repadmin_summary
+Heure de début de la synthèse de la réplication : 2026-10-08 11:30:12
+
+Début de la collecte des données pour la synthèse de la réplication. Ceci peut prendre un moment :
+  ....
+
+DSA source       delta le plus grand  échecs/total %%   erreur
+ SRV-AD01                 04m:12s    0 /   5    0
+ SRV-AD02                 03m:58s    0 /   5    0
+
+DSA de destination  delta le plus grand  échecs/total %%   erreur
+ SRV-AD01                 03m:58s    0 /   5    0
+ SRV-AD02                 04m:12s    0 /   5    0
+@@ repadmin_showrepl
+Repadmin : exécution de la commande /showrepl sur le contrôleur de domaine complet localhost
+Default-First-Site-Name\SRV-AD01
+Options DSA : IS_GC
+Options de site : (none)
+GUID de l’objet DSA : 5b9c1e2a-77c0-4b0e-9f3c-1a2b3c4d5e6f
+
+==== VOISINS ENTRANTS ======================================
+
+DC=contoso,DC=local
+    Default-First-Site-Name\SRV-AD02 via RPC
+        GUID de l’objet DSA : 8f2d6c11-4a3b-4e5f-9a0b-7c6d5e4f3a2b
+        La dernière tentative @ 2026-10-08 11:26:00 a réussi.
+@@ netdom_fsmo
+Contrôleur de schéma        SRV-AD01.contoso.local
+Maître d’attribution de noms de domaine  SRV-AD01.contoso.local
+PDC                         SRV-AD01.contoso.local
+Gestionnaire du pool RID    SRV-AD01.contoso.local
+Maître d’infrastructure     SRV-AD01.contoso.local
+La commande s’est terminée correctement.
+@@ ps_about_execution_policies
+RUBRIQUE
+    about_Execution_Policies
+
+DESCRIPTION COURTE
+    Décrit les stratégies d’exécution de PowerShell et explique comment les gérer.
+
+DESCRIPTION DÉTAILLÉE
+    Restricted    : aucun script (défaut sur Windows client).
+    AllSigned     : seuls les scripts signés par un éditeur approuvé.
+    RemoteSigned  : scripts locaux OK ; scripts téléchargés doivent être signés (défaut sur Windows Server).
+    Unrestricted  : tout, avec avertissement pour les fichiers téléchargés.
+    Bypass        : rien n’est bloqué, aucun avertissement.
+
+    Étendues (de la plus prioritaire à la moins) : MachinePolicy, UserPolicy (GPO),
+    Process, CurrentUser, LocalMachine.
+
+    La stratégie d’exécution n’est PAS une barrière de sécurité : elle évite seulement
+    d’exécuter un script par mégarde.
+@@ ps_about_comparison_operators
+RUBRIQUE
+    about_Comparison_Operators
+
+DESCRIPTION COURTE
+    -eq -ne -gt -ge -lt -le     égal, différent, plus grand, plus grand ou égal, plus petit, plus petit ou égal
+    -like -notlike              joker * et ?
+    -match -notmatch            expression régulière
+    -contains -notcontains      une collection contient-elle une valeur ?
+    -in -notin                  une valeur est-elle dans une collection ?
+    Préfixe c (-ceq, -clike) : sensible à la casse. Par défaut, PowerShell ignore la casse.
+@@ ps_about_pipelines
+RUBRIQUE
+    about_Pipelines
+
+DESCRIPTION COURTE
+    Le pipeline (|) envoie les OBJETS produits par une commande à la suivante.
+    Dans la commande suivante, l’objet courant s’appelle $_ (ou $PSItem).
+    Exemple : Get-Service | Where-Object Status -eq 'Stopped' | Select-Object Name
+@@ ps_about_quoting_rules
+RUBRIQUE
+    about_Quoting_Rules
+
+DESCRIPTION COURTE
+    "guillemets doubles" : les variables et $() sont remplacées.  "Bonjour $env:USERNAME"
+    'guillemets simples' : texte littéral, rien n’est remplacé.   'Coût : $5'
+    L’accent grave ` échappe le caractère suivant : "Un `"mot`" entre guillemets", `n = retour à la ligne.

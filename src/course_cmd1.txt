@@ -1,0 +1,920 @@
+=== cmd ¦ Invite de commandes (CMD) ¦ cmd ¦ Fichiers, réseau, services, domaine et scripts .bat : les commandes tapées chaque jour au support.
+--- Naviguer et gérer les fichiers
+### LESSON c1 ¦ Se déplacer : cd, dir, cls ¦ 1 ¦ Savoir où l’on est, changer de dossier, de lecteur, et lire une liste.
+>>> info ¦ Où suis-je ?
+L’invite t’indique toujours le **dossier courant** : `C:\Users\it.tech>`. Trois commandes suffisent pour circuler :
+
+- `cd` (**C**hange **D**irectory) : sans argument, affiche le dossier courant ; avec un chemin, s’y déplace.
+- `dir` (**DIR**ectory) : liste le contenu d’un dossier.
+- `cls` (**CL**ear **S**creen) : efface l’écran.
+```code cmd
+cd C:\Logs
+dir
+```
+>>> info ¦ Le piège du changement de lecteur
+CMD mémorise **un dossier courant par lecteur**. Depuis C:, `cd D:\Backup` change le dossier courant de D:… mais l’invite reste sur C: !
+```code cmd
+cd D:\Backup
+cd
+```
+```out
+C:\Users\it.tech
+```
+Deux solutions : taper la lettre seule (`D:`), ou ajouter `/d`.
+```anatomy cmd
+cd ¦ cmd ¦ **C**hange **D**irectory : changer de dossier courant.
+/d ¦ sw ¦ **D**rive : change aussi de lecteur en même temps.
+D:\Backup ¦ path ¦ Le dossier de destination, sur un autre lecteur.
+```
+>>> qcm ¦ Tu es sur C: et tu tapes `cd D:\Backup`. Que se passe-t-il ?
++ L’invite reste sur C: ; seul le dossier courant de D: change
+* L’invite passe sur D:\Backup
+* CMD affiche une erreur
+* CMD crée le dossier D:\Backup
+? Sans `/d`, CMD change le dossier « mémorisé » de D: sans changer de lecteur. Tape `D:` ou `cd /d D:\Backup`.
+>>> type cmd ¦ Va dans D:\Backup en changeant aussi de lecteur.
+= cd /d D:\Backup ;; cd D:\Backup /d ;; pushd D:\Backup ;; chdir /d D:\Backup
+```out
+
+D:\Backup>
+```
+? `cd /d` change de lecteur et de dossier d’un coup. `pushd` fait de même et mémorise l’ancien emplacement (retour avec `popd`).
+>>> info ¦ Lire la sortie de dir
+```out
+ Le volume dans le lecteur C s’appelle OS
+ Le numéro de série du volume est 7A3C-91F2
+
+ Répertoire de C:\Data\Compta
+
+06/10/2026  09:15    <DIR>          .
+06/10/2026  09:15    <DIR>          ..
+13/03/2026  09:00    <DIR>          Archives
+26/09/2026  17:04           248 320 bilan_2025.xlsx
+30/09/2026  11:32         1 843 211 factures_septembre.pdf
+               2 fichier(s)        2 091 531 octets
+               3 Rép(s)  41 234 567 168 octets libres
+```
+- Date et heure de **dernière modification**.
+- `<DIR>` : un dossier ; sinon la **taille** en octets.
+- `.` = le dossier lui-même, `..` = le parent.
+- En bas : nombre et taille des fichiers, nombre de dossiers et **espace libre** du lecteur.
+>>> qcm ¦ Dans la sortie de `dir`, que signifie `<DIR>` ?
++ L’entrée est un dossier
+* Le fichier est caché
+* Le fichier est en lecture seule
+* Le dossier est vide
+? `<DIR>` remplace la taille pour les dossiers. Les fichiers cachés n’apparaissent pas du tout sans `/a`.
+>>> type cmd ¦ Efface l’écran de la console.
+= cls
+? `cls` vide l’affichage, pas l’historique : la flèche haut retrouve toujours tes commandes.
+
+### LESSON c2 ¦ dir en profondeur : /a /s /b /o /w ¦ 1 ¦ Fichiers cachés, recherche récursive, tri par taille.
+>>> info ¦ Une commande, beaucoup d’options
+```anatomy cmd
+dir ¦ cmd ¦ Liste le contenu d’un dossier.
+C:\Users ¦ path ¦ Le dossier de départ.
+/a:h ¦ sw ¦ **A**ttributes : seulement les éléments ayant l’attribut **h** (**h**idden, caché).
+/s ¦ sw ¦ **S**ubdirectories : descend dans tous les sous-dossiers.
+/b ¦ sw ¦ **B**are : affichage brut, un chemin complet par ligne (idéal pour un fichier ou un pipe).
+```
+>>> info ¦ Les lettres de /a et de /o
+```table
+/a: ¦ Signification ¦ /o: ¦ Signification
+`h` ¦ caché (hidden) ¦ `n` ¦ par nom
+`s` ¦ système ¦ `s` ¦ par taille (size)
+`d` ¦ dossier (directory) ¦ `d` ¦ par date
+`r` ¦ lecture seule (read-only) ¦ `e` ¦ par extension
+`a` ¦ prêt à archiver ¦ `g` ¦ dossiers en premier (group)
+`-` ¦ inverse : `/a:-d` = pas les dossiers ¦ `-` ¦ ordre inverse : `/o:-s` = plus gros d’abord
+```
+`/a` seul affiche **tout**, cachés et système compris.
+>>> type cmd ¦ Liste C:\Data\Compta du plus gros fichier au plus petit.
+= dir C:\Data\Compta /o:-s ;; dir C:\Data\Compta /o-s ;; dir /o:-s C:\Data\Compta ;; dir /o-s C:\Data\Compta
+hint: `/o` pour l’ordre, `s` pour la taille, et un `-` pour inverser.
+```out
+ Répertoire de C:\Data\Compta
+
+06/10/2026  09:15    <DIR>          .
+06/10/2026  09:15    <DIR>          ..
+30/09/2026  11:32         1 843 211 factures_septembre.pdf
+26/09/2026  17:04           248 320 bilan_2025.xlsx
+06/10/2026  09:15            56 320 notes_de_frais.xlsx
+13/03/2026  09:00    <DIR>          Archives
+               3 fichier(s)        2 147 851 octets
+               3 Rép(s)  41 234 567 168 octets libres
+```
+>>> fill cmd ¦ Affiche les fichiers cachés du profil.
+```code cmd
+dir C:\Users\it.tech ___
+```
+= /a:h
+~ /h ;; /a:d ;; /s ;; /q
+? `/a:h` filtre sur l’attribut caché. Tu verras par exemple `AppData` et `NTUSER.DAT`. Il n’existe pas de `/h` pour dir.
+>>> qcm ¦ Que liste `dir /a:-d` ?
++ Uniquement les fichiers, sans les dossiers
+* Uniquement les dossiers
+* Les fichiers supprimés
+* Les dossiers cachés
+? Le `-` inverse l’attribut : « tout sauf les dossiers ». Et comme `/a` est présent, les fichiers cachés sont inclus.
+>>> type cmd ¦ Cherche sous C:\Users tous les fichiers .pst (archives Outlook), en chemins complets.
+= dir C:\Users\*.pst /s /b ;; dir /s /b C:\Users\*.pst ;; dir C:\Users\*.pst /b /s ;; dir /b /s C:\Users\*.pst
+hint: Le motif `*.pst` derrière le dossier, puis `/s` (sous-dossiers) et `/b` (brut).
+```out
+C:\Users\jdupont\Documents\Fichiers Outlook\archives_2024.pst
+C:\Users\smartin\Documents\Fichiers Outlook\Sophie_Martin.pst
+```
+!it Avant une migration de messagerie, on recense les fichiers .pst pour les importer dans les boîtes Exchange Online.
+>>> qcm ¦ Quel commutateur affiche les noms sur plusieurs colonnes ?
++ `/w`
+* `/c`
+* `/l`
+* `/p`
+? `/w` = **w**ide. `/p` fait une **p**ause à chaque écran, `/l` affiche en minuscules (**l**owercase).
+
+### LESSON c3 ¦ Créer, renommer, supprimer : md, ren, del, rd ¦ 1 ¦ Gérer fichiers et dossiers proprement, sans mauvaise surprise.
+>>> info ¦ Créer des dossiers : md
+`md` (**M**ake **D**irectory, alias `mkdir`) crée un dossier. Il crée aussi tous les dossiers intermédiaires manquants.
+```code cmd
+md C:\Temp\Audit\2026\Octobre
+```
+Si le dossier existe déjà : « Un sous-répertoire ou un fichier C:\Temp\Audit existe déjà. »
+>>> type cmd ¦ Crée le dossier C:\Temp\Audit.
+= md C:\Temp\Audit ;; mkdir C:\Temp\Audit ;; md "C:\Temp\Audit"
+? `md` et `mkdir` sont identiques.
+>>> info ¦ Renommer : ren
+`ren` (**REN**ame) prend l’ancien nom puis le **nouveau nom seul**, sans chemin. Les jokers marchent pour changer les extensions.
+```code cmd
+ren C:\Temp\rapport.txt rapport_ancien.txt
+ren C:\Temp\*.txt *.bak
+```
+!warn Pour déplacer un fichier vers un autre dossier, c’est `move`, pas `ren`.
+>>> qcm ¦ Que répond CMD à `ren C:\Temp\a.txt D:\b.txt` ?
++ « La syntaxe de la commande n’est pas correcte. »
+* Le fichier est déplacé vers D: et renommé
+* Le fichier est copié
+* Rien, la commande réussit
+? Le second argument de `ren` doit être un nom, pas un chemin. Pour changer de dossier ou de lecteur, utilise `move`.
+>>> info ¦ Supprimer des fichiers : del
+```anatomy cmd
+del ¦ cmd ¦ **DEL**ete : supprime des fichiers (jamais des dossiers). Alias : `erase`.
+/s ¦ sw ¦ **S**ubdirectories : dans le dossier et tous ses sous-dossiers.
+/q ¦ sw ¦ **Q**uiet : sans question « Êtes-vous sûr ? ».
+/f ¦ sw ¦ **F**orce : supprime aussi les fichiers en lecture seule.
+C:\Temp\*.tmp ¦ path ¦ Ce qu’il faut supprimer : tous les .tmp de C:\Temp.
+```
+!warn `del` ne passe pas par la Corbeille. Les fichiers cachés ou système sont ignorés, sauf avec `/a`.
+>>> info ¦ Supprimer des dossiers : rd
+`rd` (**R**emove **D**irectory, alias `rmdir`) ne supprime qu’un dossier **vide**. Pour un dossier plein : `/s` supprime l’arborescence et `/q` évite la confirmation.
+```code cmd
+rd C:\Temp\cache
+rd /s /q C:\Temp\cache
+```
+```out
+Le répertoire n’est pas vide.
+```
+>>> fill cmd ¦ Supprime le dossier C:\Temp\cache et tout son contenu, sans confirmation.
+```code cmd
+rd ___ ___ C:\Temp\cache
+```
+= /s ;; /q
+~ /f ;; /a ;; /y
+? `/s` pour l’arborescence, `/q` pour le silence. L’ordre des deux commutateurs est libre.
+>>> qcm ¦ Pourquoi `rd C:\Temp\cache` répond « Le répertoire n’est pas vide » ?
++ Sans `/s`, rd ne supprime que les dossiers vides
+* Un fichier du dossier est ouvert
+* Il faut des droits administrateur
+* Le dossier est caché
+? C’est une sécurité. Ajoute `/s` (et `/q` pour ne pas être interrogé).
+>>> type cmd ¦ Supprime tous les fichiers .tmp de C:\Temp, sans confirmation.
+= del /q C:\Temp\*.tmp ;; del C:\Temp\*.tmp /q ;; erase /q C:\Temp\*.tmp ;; del /f /q C:\Temp\*.tmp ;; del /q /f C:\Temp\*.tmp ;; del C:\Temp\*.tmp ;; del "C:\Temp\*.tmp"
+? Avec un motif précis comme `*.tmp`, CMD ne demande pas confirmation ; avec `*` ou `*.*`, il le fait, d’où `/q`.
+
+### LESSON c4 ¦ Copier : copy, xcopy, robocopy ¦ 2 ¦ Trois générations d’outils, et pourquoi robocopy est roi.
+>>> info ¦ Trois outils, trois époques
+```table
+Outil ¦ Usage ¦ À retenir
+`copy` ¦ un ou plusieurs fichiers ¦ pas de sous-dossiers
+`xcopy` ¦ arborescences ¦ ancien, toujours là, dépassé par robocopy
+`robocopy` ¦ copies sérieuses ¦ reprise, miroir, tentatives, journal, multithread
+```
+```code cmd
+copy C:\Data\nouveaux.csv D:\Backup\
+```
+```out
+        1 fichier(s) copié(s).
+```
+>>> info ¦ Robocopy, ligne par ligne
+**Robocopy** = **Ro**bust **Copy**. C’est l’outil de référence pour sauvegarder, migrer un serveur de fichiers ou un profil.
+```anatomy cmd
+robocopy ¦ cmd ¦ **Ro**bust file **copy**.
+C:\Data\Compta ¦ path ¦ La **source** (un dossier, jamais un fichier).
+\\SRV-FICHIERS\Backup\Compta ¦ path ¦ La **destination**, ici un partage réseau.
+/MIR ¦ sw ¦ **MIR**ror : la destination devient identique à la source (= `/E` + `/PURGE`). Ce qui n’existe plus dans la source est **supprimé** de la destination.
+/Z ¦ sw ¦ Mode redémarrable : reprend un gros fichier là où la copie s’est coupée.
+/R:2 ¦ sw ¦ **R**etry : 2 nouvelles tentatives en cas d’échec (défaut : 1 million !).
+/W:5 ¦ sw ¦ **W**ait : 5 secondes entre deux tentatives (défaut : 30).
+/LOG:C:\Logs\copie.log ¦ sw ¦ Écrit le rapport dans un journal (`/LOG+:` ajoute au lieu d’écraser).
+```
+!warn `/MIR` dans le mauvais sens (destination vide vers source pleine) **efface la source**. Teste toujours d’abord avec `/L`.
+>>> info ¦ Les options de robocopy à connaître
+```table
+Option ¦ Effet
+`/E` ¦ sous-dossiers, y compris vides (**E**mpty)
+`/S` ¦ sous-dossiers, sauf vides (**S**ubdirectories)
+`/L` ¦ **L**iste seulement : montre ce qui serait copié, sans rien faire
+`/MT:16` ¦ **M**ulti**T**hread : 16 copies en parallèle (défaut 8)
+`/XO` ¦ e**X**clut les fichiers plus anciens (**O**lder) que ceux de la destination
+`/XF *.tmp` ¦ e**X**clut des **F**ichiers
+`/XD Cache` ¦ e**X**clut des **D**ossiers
+`/COPY:DAT` ¦ copie **D**onnées, **A**ttributs, horodatage (**T**imestamps) ; `DATSOU` ajoute sécurité, propriétaire, audit
+`/MOV` ¦ déplace (supprime la source après copie)
+`/NP` ¦ pas de pourcentage (**N**o **P**rogress) : journaux lisibles
+`/TEE` ¦ écrit à l’écran **et** dans le journal
+```
+>>> info ¦ Les codes de sortie de robocopy
+Robocopy renvoie un code dans `%ERRORLEVEL%`. Contrairement aux autres outils, **1 n’est pas une erreur**.
+```table
+Code ¦ Signification
+`0` ¦ rien à copier, tout était à jour
+`1` ¦ des fichiers ont été copiés
+`2` ¦ des fichiers en trop dans la destination (extras)
+`3` ¦ 1 + 2
+`4` ¦ des différences ont été détectées
+`8` et plus ¦ au moins une copie a **échoué**
+```
+Dans un script : `if %ERRORLEVEL% GEQ 8 echo ECHEC`.
+>>> qcm ¦ Une sauvegarde robocopy se termine avec le code 1. Que conclure ?
++ Des fichiers ont été copiés, sans erreur
+* La sauvegarde a échoué
+* Rien n’a été copié
+* Un fichier était verrouillé
+? Pour robocopy, les codes 0 à 7 sont des succès. L’échec commence à 8.
+>>> qcm ¦ Quelle option permet de tester une commande robocopy sans rien copier ni supprimer ?
++ `/L`
+* `/T`
+* `/TEST`
+* `/Z`
+? `/L` (**L**ist only) affiche tout ce qui serait fait. Indispensable avant un premier `/MIR`.
+>>> type cmd ¦ Copie C:\Data\RH vers D:\Backup\RH, sous-dossiers vides compris, avec 2 tentatives espacées de 5 secondes.
+=~ ^robocopy "?C:\\Data\\RH\\?"? "?D:\\Backup\\RH\\?"?( /(E|R:2|W:5)){3}$
+sol: robocopy C:\Data\RH D:\Backup\RH /E /R:2 /W:5
+hint: Source, destination, puis `/E`, `/R:2` et `/W:5` (dans l’ordre que tu veux).
+```out
+
+-------------------------------------------------------------------------------
+   ROBOCOPY     ::     Copie robuste de fichiers pour Windows
+-------------------------------------------------------------------------------
+
+  Début : jeudi 8 octobre 2026 10:12:44
+   Source : C:\Data\RH\
+     Dest : D:\Backup\RH\
+
+    Fichiers : *.*
+
+  Options : *.* /S /E /DCOPY:DA /COPY:DAT /R:2 /W:5
+
+------------------------------------------------------------------------------
+
+	  Nouveau rép.      1	C:\Data\RH\
+	    Nouveau fichier 	    86.0 k	planning_octobre.xlsx
+	  Nouveau rép.      1	C:\Data\RH\Contrats\
+	    Nouveau fichier 	    40.2 k	modele_CDI.docx
+
+------------------------------------------------------------------------------
+
+               Total    Copié   Ignoré  Discordance      ÉCHEC    Extras
+    Rép :         2         2         0         0         0         0
+Fichiers :         2         2         0         0         0         0
+```
+? Les commutateurs de robocopy peuvent être écrits en majuscules ou minuscules, dans n’importe quel ordre.
+>>> info ¦ xcopy, pour comprendre les vieux scripts
+```table
+Commutateur ¦ Mot ¦ Effet
+`/E` ¦ **E**mpty ¦ sous-dossiers, même vides
+`/S` ¦ **S**ubdirectories ¦ sous-dossiers non vides
+`/I` ¦ d**I**rectory ¦ la destination est un dossier (évite la question F/R)
+`/H` ¦ **H**idden ¦ inclut fichiers cachés et système
+`/Y` ¦ **Y**es ¦ écrase sans demander
+`/C` ¦ **C**ontinue ¦ continue malgré les erreurs
+`/D` ¦ **D**ate ¦ ne copie que les fichiers plus récents
+```
+>>> fill cmd ¦ Dépose le dossier C:\Scripts sur le disque C: de PC-COMPTA-02, via le partage administratif.
+```code cmd
+xcopy C:\Scripts \\PC-COMPTA-02\C$\Scripts ___ ___
+```
+= /E ;; /I
+~ /Q ;; /Z ;; /MIR
+? `/E` copie toute l’arborescence, `/I` indique que la destination est un dossier. `/MIR` n’existe que dans robocopy.
+!it Déposer un script ou un installeur sur `\\PC\C$` fonctionne sans WinRM : il suffit d’être administrateur du poste et que le partage C$ soit accessible.
+
+### LESSON c5 ¦ Lire et chercher : type, more, find, findstr ¦ 1 ¦ Afficher un fichier et trouver une ligne dans des journaux.
+>>> info ¦ Afficher un fichier texte
+- `type fichier.txt` : affiche tout le contenu d’un coup.
+- `more fichier.txt` : page par page (Espace pour continuer, Q pour quitter).
+- `type nul > vide.txt` : crée un fichier vide.
+```code cmd
+type C:\Users\it.tech\Desktop\notes.txt
+```
+>>> info ¦ find et findstr : chercher du texte
+```anatomy cmd
+findstr ¦ cmd ¦ **FIND STR**ing : cherche un texte dans des fichiers ou dans un pipe.
+/s ¦ sw ¦ **S**ubdirectories : dans les sous-dossiers aussi.
+/i ¦ sw ¦ **I**gnore case : sans tenir compte des majuscules.
+/m ¦ sw ¦ **M**atch files : affiche seulement le nom des fichiers qui contiennent le texte.
+"erreur" ¦ str ¦ Le texte cherché.
+C:\Logs\*.log ¦ path ¦ Où chercher.
+```
+>>> info ¦ find ou findstr ?
+```table
+ ¦ find ¦ findstr
+Recherche ¦ un texte exact, toujours entre guillemets ¦ un ou plusieurs mots, ou une expression régulière
+Plusieurs mots ¦ non ¦ `"a b"` = a **OU** b ; `/c:"a b"` = la phrase exacte
+Compter ¦ `/c` (**c**ount) ¦ non
+Numéroter ¦ `/n` ¦ `/n`
+Inverser ¦ `/v` ¦ `/v`
+Ignorer la casse ¦ `/i` ¦ `/i`
+Sous-dossiers ¦ non ¦ `/s`
+```
+!warn `findstr "délai de réponse"` cherche « délai » OU « de » OU « réponse ». Pour la phrase exacte : `findstr /c:"délai de réponse"`.
+>>> type cmd ¦ Affiche les lignes de C:\Logs\app.log qui contiennent « erreur », sans tenir compte de la casse.
+= findstr /i erreur C:\Logs\app.log ;; findstr /i "erreur" C:\Logs\app.log ;; find /i "erreur" C:\Logs\app.log ;; findstr /i "ERREUR" C:\Logs\app.log ;; findstr /i ERREUR C:\Logs\app.log ;; find /i "ERREUR" C:\Logs\app.log ;; findstr "ERREUR" C:\Logs\app.log ;; find "ERREUR" C:\Logs\app.log
+```out
+2026-10-08 08:40:11 ERREUR Connexion SQL refusée : SRV-APP01 injoignable
+2026-10-08 08:40:41 ERREUR Connexion SQL refusée : SRV-APP01 injoignable
+```
+? `findstr` et `find` conviennent ici. Avec `find`, le texte doit toujours être entre guillemets.
+>>> type cmd ¦ Compte combien de lignes de C:\Logs\app.log contiennent « ERREUR ».
+= find /c "ERREUR" C:\Logs\app.log ;; find /c /i "erreur" C:\Logs\app.log ;; find /i /c "erreur" C:\Logs\app.log ;; find /c /i "ERREUR" C:\Logs\app.log ;; find /i /c "ERREUR" C:\Logs\app.log ;; find "ERREUR" /c C:\Logs\app.log
+hint: C’est `find` qui sait compter, avec le commutateur `/c`.
+```out
+
+---------- C:\LOGS\APP.LOG: 2
+```
+>>> qcm ¦ Que fait `findstr "ERREUR WARN" C:\Logs\app.log` ?
++ Affiche les lignes qui contiennent ERREUR ou WARN
+* Affiche les lignes qui contiennent la phrase « ERREUR WARN »
+* Affiche les lignes qui contiennent les deux mots
+* Renvoie une erreur de syntaxe
+? Les mots séparés par un espace sont des alternatives. Pratique pour filtrer plusieurs niveaux de gravité d’un coup.
+>>> fill cmd ¦ Cherche la phrase exacte « délai de réponse » dans app.log.
+```code cmd
+findstr ___:"délai de réponse" C:\Logs\app.log
+```
+= /c
+~ /r ;; /s ;; /x ;; /m
+? `/c:` traite tout le texte comme une seule chaîne littérale, espaces compris.
+
+### LESSON c6 ¦ Redirections et pipes : > >> | && || ¦ 2 ¦ Envoyer une sortie dans un fichier, chaîner des commandes, réagir à un échec.
+>>> info ¦ Les symboles d’enchaînement
+```table
+Symbole ¦ Effet ¦ Exemple
+`>` ¦ envoie la sortie dans un fichier (l’écrase) ¦ `ipconfig /all > diag.txt`
+`>>` ¦ ajoute à la fin du fichier ¦ `echo %DATE% >> journal.txt`
+`2>` ¦ envoie les **erreurs** dans un fichier ¦ `dir X: 2> erreurs.txt`
+`2>&1` ¦ envoie les erreurs au même endroit que la sortie ¦ `… > log.txt 2>&1`
+`> nul` ¦ jette la sortie ¦ `ping srv-ad01 > nul`
+`<` ¦ lit l’entrée depuis un fichier ¦ `sort < liste.txt`
+`|` ¦ pipe : la sortie de gauche devient l’entrée de droite ¦ `ipconfig | findstr IPv4`
+`&` ¦ enchaîne, quoi qu’il arrive ¦ `cls & dir`
+`&&` ¦ lance la suivante **si** la première réussit ¦ `md X && cd X`
+`||` ¦ lance la suivante **si** la première échoue ¦ `ping -n 1 X > nul || echo KO`
+```
+>>> info ¦ Un diagnostic dans un fichier
+```anatomy cmd
+ipconfig ¦ cmd ¦ La commande dont on veut garder le résultat.
+/all ¦ sw ¦ Configuration complète.
+> ¦ op ¦ **Redirection** : la sortie part dans un fichier au lieu de l’écran (le fichier est écrasé).
+C:\Temp\diag.txt ¦ path ¦ Le fichier de destination.
+2>&1 ¦ op ¦ Les messages d’erreur (flux 2) vont au même endroit que la sortie normale (flux 1).
+```
+!it Pour un utilisateur à distance, fais-lui lancer la commande avec redirection, puis récupère le fichier par `\\PC\C$\Temp\diag.txt`.
+>>> qcm ¦ Quelle différence entre `>` et `>>` ?
++ `>` écrase le fichier, `>>` ajoute à la fin
+* `>` ajoute, `>>` écrase
+* `>>` redirige les erreurs
+* Aucune différence
+? Pour un journal qui grossit à chaque exécution, c’est `>>`. Pour un rapport neuf à chaque fois, `>`.
+>>> type cmd ¦ Enregistre la sortie de ipconfig /all dans C:\Temp\diag.txt.
+= ipconfig /all > C:\Temp\diag.txt ;; ipconfig /all >C:\Temp\diag.txt ;; ipconfig /all > "C:\Temp\diag.txt" ;; ipconfig /all 1> C:\Temp\diag.txt
+? Rien ne s’affiche : tout est parti dans le fichier. Vérifie avec `type C:\Temp\diag.txt`.
+>>> info ¦ Le pipe dans CMD : du texte qui passe
+Le `|` envoie les **lignes** affichées par la commande de gauche vers celle de droite. Dans CMD, la droite est souvent un filtre : `find`, `findstr`, `sort`, `more`.
+```code cmd
+ipconfig | findstr IPv4
+tasklist | findstr /i outlook
+```
+```out
+   Adresse IPv4. . . . . . . . . . . . . .: 192.168.10.42
+OUTLOOK.EXE                   7344 Console                    1   348 168 Ko
+```
+>>> order cmd ¦ Construis la commande qui affiche seulement la ligne d’Outlook dans la liste des processus.
+~ tasklist ;; | ;; findstr ;; /i ;; outlook
+x~ > ;; &&
+? `tasklist` liste, `|` transmet, `findstr /i outlook` garde la ligne voulue sans se soucier des majuscules.
+>>> qcm ¦ Dans `net stop spooler && net start spooler`, quand la seconde commande s’exécute-t-elle ?
++ Seulement si l’arrêt a réussi
+* Toujours
+* Seulement si l’arrêt a échoué
+* En même temps que la première
+? `&&` teste le code de retour (ERRORLEVEL) : 0 signifie succès. Avec `&`, la seconde partirait dans tous les cas.
+>>> fill cmd ¦ Affiche « Serveur injoignable » seulement si le ping échoue.
+```code cmd
+ping -n 1 srv-fichiers > nul ___ echo Serveur injoignable
+```
+= ||
+~ && ;; & ;; |
+? `||` exécute la suite quand la commande précédente échoue. `> nul` masque la sortie du ping.
+
+### LESSON c7 ¦ Attributs et permissions : attrib, icacls, takeown ¦ 3 ¦ Fichiers cachés par un virus, droits NTFS, dossiers orphelins.
+>>> info ¦ attrib : les attributs de fichiers
+```table
+Attribut ¦ Lettre ¦ Signification
+Caché ¦ `H` ¦ invisible dans l’Explorateur par défaut
+Système ¦ `S` ¦ fichier système, protégé
+Lecture seule ¦ `R` ¦ ne peut pas être modifié ni supprimé sans forcer
+Archive ¦ `A` ¦ modifié depuis la dernière sauvegarde
+```
+`+` ajoute un attribut, `-` le retire. `/s` traite les sous-dossiers, `/d` traite aussi les dossiers eux-mêmes.
+>>> info ¦ Le cas réel : la clé USB « vide »
+Un vieux virus de clé USB cache tous les fichiers (attributs Caché + Système) et laisse des raccourcis piégés. Les données sont toujours là.
+```anatomy cmd
+attrib ¦ cmd ¦ **ATTRIB**utes : affiche ou modifie les attributs.
+-h ¦ sw ¦ Retire l’attribut **h**idden (caché).
+-s ¦ sw ¦ Retire l’attribut **s**ystème.
+-r ¦ sw ¦ Retire la lecture seule (**r**ead-only).
+E:\*.* ¦ path ¦ Tous les fichiers de la clé E:.
+/s ¦ sw ¦ Dans tous les sous-dossiers.
+/d ¦ sw ¦ Applique aussi aux **d**ossiers.
+```
+!warn Supprime d’abord les raccourcis `.lnk` suspects et passe un antivirus avant d’ouvrir quoi que ce soit.
+>>> qcm ¦ Que fait `attrib +r C:\Scripts\sauvegarde.bat` ?
++ Met le fichier en lecture seule
+* Retire la lecture seule
+* Rend le fichier exécutable
+* Lance le script en administrateur
+? `+` ajoute, `r` = read-only. Pour le supprimer ensuite, il faudra `del /f` ou retirer l’attribut.
+>>> info ¦ icacls : les permissions NTFS
+`icacls` affiche et modifie les listes de contrôle d’accès (ACL) des fichiers et dossiers.
+```table
+Droit ¦ Signification
+`F` ¦ contrôle total (Full)
+`M` ¦ modification (Modify) : lire, écrire, supprimer
+`RX` ¦ lecture et exécution (Read & eXecute)
+`R` ¦ lecture seule
+`W` ¦ écriture
+```
+```table
+Héritage ¦ Signification
+`(OI)` ¦ Object Inherit : s’applique aux **fichiers** du dossier
+`(CI)` ¦ Container Inherit : s’applique aux **sous-dossiers**
+`(IO)` ¦ Inherit Only : seulement aux enfants, pas au dossier lui-même
+`(I)` ¦ permission héritée du parent
+```
+>>> info ¦ Donner un accès à un groupe
+```anatomy cmd
+icacls ¦ cmd ¦ Gère les ACL.
+D:\Partages\Compta ¦ path ¦ Le dossier à sécuriser.
+/grant ¦ sw ¦ Ajoute une permission (`/grant:r` remplace celles existantes pour ce compte).
+"CONTOSO\DL_Partage_Compta_RW:(OI)(CI)M" ¦ str ¦ Le groupe, l’héritage aux fichiers et sous-dossiers, et le droit Modification.
+/T ¦ sw ¦ **T**ree : applique aussi aux éléments déjà présents dessous.
+```
+!it Bonne pratique (AGDLP) : on donne les droits à un **groupe de domaine local** (DL_…), qui contient les groupes globaux des services (GG_…), qui contiennent les utilisateurs.
+>>> type cmd ¦ Affiche les permissions du dossier C:\Data\Compta.
+= icacls C:\Data\Compta ;; icacls "C:\Data\Compta"
+```out
+C:\Data\Compta AUTORITE NT\Système:(I)(OI)(CI)(F)
+               BUILTIN\Administrateurs:(I)(OI)(CI)(F)
+               BUILTIN\Utilisateurs:(I)(OI)(CI)(RX)
+               AUTORITE NT\Utilisateurs authentifiés:(I)(OI)(CI)(M)
+
+1 fichiers correctement traités ; échec du traitement de 0 fichiers
+```
+>>> fill cmd ¦ Donne le droit de modification au groupe GG_RH sur le dossier RH, fichiers et sous-dossiers compris.
+```code cmd
+icacls D:\Partages\RH /grant "CONTOSO\GG_RH:(OI)(CI)___"
+```
+= M
+~ F ;; RX ;; R
+? `M` (Modify) permet de lire, créer, modifier et supprimer. `F` (contrôle total) permettrait en plus de changer les permissions : à réserver aux administrateurs.
+>>> info ¦ takeown : reprendre la main sur un dossier orphelin
+Le profil d’un ancien salarié peut refuser l’accès même aux administrateurs. On en prend d’abord possession, puis on se donne les droits :
+```code cmd
+takeown /f D:\Anciens\cmoreau /r /d o
+icacls D:\Anciens\cmoreau /grant Administrateurs:F /t
+```
+`/f` = le **f**ichier ou dossier, `/r` = **r**écursif, `/d o` = répond « **o**ui » à la question posée pour les dossiers sans droit de liste (sur un Windows anglais : `/d y`).
+!warn La prise de possession est tracée. Ne l’utilise que dans le cadre d’une procédure validée.
+
+--- Réseau
+### LESSON c8 ¦ ipconfig : la carte d’identité réseau ¦ 1 ¦ Adresse, masque, passerelle, DNS, DHCP : lire et agir.
+>>> info ¦ Ce que montre ipconfig /all
+```table
+Ligne ¦ Ce qu’elle dit
+Adresse physique ¦ l’adresse **MAC** de la carte (utile pour une réservation DHCP)
+DHCP activé ¦ adresse automatique (Oui) ou fixe (Non)
+Adresse IPv4 ¦ l’adresse du poste sur le réseau
+Masque de sous-réseau ¦ la taille du réseau local (255.255.255.0 = /24)
+Passerelle par défaut ¦ le routeur pour sortir du réseau local
+Serveur DHCP ¦ qui a attribué l’adresse
+Serveurs DNS ¦ qui traduit les noms en adresses ; dans un domaine, ce sont les contrôleurs de domaine
+Bail obtenu / expirant ¦ la durée de validité de l’adresse DHCP
+```
+>>> info ¦ Le signal d’alarme : 169.254.x.x
+Une adresse **169.254.x.x** (APIPA, adressage automatique) signifie que le poste n’a **pas obtenu de réponse du serveur DHCP**. Il s’est attribué une adresse au hasard : il ne joindra rien.
+
+Pistes : câble ou prise réseau, VLAN du port de switch, serveur DHCP arrêté, étendue DHCP pleine.
+>>> qcm ¦ Un poste a l’adresse 169.254.83.17. Que se passe-t-il ?
++ Il n’a pas obtenu d’adresse du serveur DHCP
+* Il est connecté à Internet en IPv6
+* Il a une adresse fixe mal configurée
+* C’est l’adresse normale d’un poste en Wi-Fi
+? 169.254.0.0/16 est la plage APIPA. Elle apparaît quand aucun serveur DHCP n’a répondu.
+>>> info ¦ Les commutateurs d’ipconfig
+```table
+Commutateur ¦ Effet
+`/all` ¦ configuration complète (MAC, DHCP, DNS, baux)
+`/release` ¦ rend l’adresse DHCP (le poste perd le réseau)
+`/renew` ¦ redemande une adresse au serveur DHCP
+`/flushdns` ¦ vide le cache DNS local
+`/displaydns` ¦ affiche le cache DNS local
+`/registerdns` ¦ réinscrit le poste dans le DNS
+```
+!warn Ne lance jamais `/release` sur un poste où tu es connecté à distance : tu perds la main jusqu’au prochain redémarrage.
+>>> type cmd ¦ Affiche la configuration IP complète, avec l’adresse MAC et les serveurs DNS.
+= ipconfig /all ;; ipconfig -all
+```out
+
+Configuration IP de Windows
+
+   Nom de l’hôte . . . . . . . . . . : PC-IT-01
+   Suffixe DNS principal . . . . . . : contoso.local
+
+Carte Ethernet Ethernet :
+
+   Description. . . . . . . . . . . . . . : Intel(R) Ethernet Connection (17) I219-LM
+   Adresse physique . . . . . . . . . . . : D4-81-D7-3A-6E-2C
+   DHCP activé. . . . . . . . . . . . . . : Oui
+   Adresse IPv4. . . . . . . . . . . . . .: 192.168.10.42(préféré)
+   Masque de sous-réseau. . . . . . . . . : 255.255.255.0
+   Passerelle par défaut. . . . . . . . . : 192.168.10.1
+   Serveur DHCP . . . . . . . . . . . . . : 192.168.10.5
+   Serveurs DNS. . .  . . . . . . . . . . : 192.168.10.5
+                                       192.168.10.6
+```
+>>> type cmd ¦ Vide le cache DNS du poste.
+= ipconfig /flushdns
+```out
+
+Configuration IP de Windows
+
+Cache de résolution DNS vidé.
+```
+? Utile quand un serveur a changé d’adresse et que le poste garde l’ancienne en mémoire.
+>>> order cmd ¦ En une ligne : rends l’adresse DHCP puis redemandes-en une.
+~ ipconfig ;; /release ;; && ;; ipconfig ;; /renew
+x~ /flushdns ;; |
+? `&&` enchaîne le renouvellement seulement si la libération a réussi.
+
+### LESSON c9 ¦ ping, tracert, pathping : tester la connectivité ¦ 1 ¦ Lire les réponses, et diagnostiquer couche par couche.
+>>> info ¦ Lire un ping
+```code cmd
+ping srv-ad01
+```
+```out
+
+Envoi d’une requête 'Ping'  srv-ad01.contoso.local [192.168.10.5] avec 32 octets de données :
+Réponse de 192.168.10.5 : octets=32 temps<1ms TTL=128
+Réponse de 192.168.10.5 : octets=32 temps<1ms TTL=128
+
+Statistiques Ping pour 192.168.10.5:
+    Paquets : envoyés = 2, reçus = 2, perdus = 0 (perte 0%),
+```
+- `temps` : le délai aller-retour. Sur le réseau local, moins d’1 ms ; vers Internet, 10 à 30 ms.
+- `TTL` : 128 indique souvent un Windows, 64 un Linux ou un équipement réseau.
+>>> info ¦ Les trois messages d’échec
+```table
+Message ¦ Ce que ça veut dire
+Délai d’attente de la demande dépassé. ¦ aucune réponse : machine éteinte, ou pare-feu qui bloque l’ICMP
+Impossible de joindre l’hôte de destination. ¦ le réseau local ne trouve pas la machine (souvent : éteinte ou débranchée)
+La requête Ping n’a pas pu trouver l’hôte… ¦ le **nom** n’a pas pu être résolu : problème **DNS** ou faute de frappe
+```
+!warn « Impossible de joindre l’hôte » est compté comme « reçu » dans les statistiques. Lis les lignes, pas seulement le total.
+>>> info ¦ La méthode des cercles
+Pour un « Internet ne marche pas », on teste du plus proche au plus loin :
+
+- `ping 127.0.0.1` : la pile TCP/IP du poste fonctionne.
+- `ping 192.168.10.1` : la **passerelle** répond (câble, Wi-Fi, VLAN).
+- `ping 8.8.8.8` : **Internet** répond par adresse IP.
+- `ping google.com` : la **résolution DNS** fonctionne.
+Le premier cercle qui échoue désigne la panne.
+>>> qcm ¦ `ping 8.8.8.8` répond, mais `ping google.com` donne « n’a pas pu trouver l’hôte ». Où est le problème ?
++ Dans la résolution DNS
+* Dans le câble réseau
+* Dans la passerelle
+* Le site google.com est en panne
+? Internet est joignable par adresse IP, donc le réseau marche. Seule la traduction du nom échoue : serveurs DNS du poste, cache, ou fichier hosts.
+>>> info ¦ Les options de ping
+```table
+Option ¦ Mot ¦ Effet
+`-t` ¦ (until stopped) ¦ ping continu, Ctrl+C pour arrêter
+`-n 10` ¦ **n**umber ¦ nombre de requêtes
+`-l 1472` ¦ **l**ength ¦ taille des données (tests de MTU)
+`-a` ¦ **a**ddress resolve ¦ affiche le nom correspondant à une adresse IP
+`-w 500` ¦ **w**ait ¦ délai d’attente en millisecondes
+`-4` / `-6` ¦ ¦ force IPv4 ou IPv6
+```
+>>> type cmd ¦ Ping la passerelle 192.168.10.1 en continu.
+= ping 192.168.10.1 -t ;; ping -t 192.168.10.1 ;; ping /t 192.168.10.1 ;; ping 192.168.10.1 /t
+? Laisse tourner pendant que l’utilisateur bouge le câble ou change de prise : tu verras le moment exact de la coupure. Ctrl+C pour arrêter.
+>>> info ¦ tracert : le chemin, routeur par routeur
+`tracert` (**trace route**) affiche chaque routeur traversé jusqu’à la cible.
+```code cmd
+tracert -d google.com
+```
+```out
+
+Détermination de l’itinéraire vers google.com [142.250.201.174]
+avec un maximum de 30 sauts :
+
+  1    <1 ms    <1 ms    <1 ms  192.168.10.1
+  2     3 ms     2 ms     3 ms  80.10.236.1
+  3     4 ms     4 ms     5 ms  193.252.101.86
+  4     *        *        *     Délai d’attente de la demande dépassé.
+  5    11 ms    11 ms    12 ms  72.14.211.26
+  6    12 ms    12 ms    13 ms  142.250.201.174
+
+Itinéraire déterminé.
+```
+`-d` évite de résoudre chaque adresse en nom : c’est beaucoup plus rapide. `pathping` combine tracert et des statistiques de perte par saut (compte 5 minutes).
+>>> qcm ¦ Dans un tracert, le saut 4 affiche `*  *  *` mais les sauts suivants répondent. Y a-t-il un problème ?
++ Non, ce routeur ne répond simplement pas aux requêtes de trace
+* Oui, le saut 4 coupe la connexion
+* Oui, il faut redémarrer la box
+* Oui, le DNS est en panne
+? Si les sauts suivants répondent, le trafic passe bien. Beaucoup de routeurs d’opérateurs ignorent ces requêtes.
+>>> type cmd ¦ Trace la route vers google.com sans résoudre les noms.
+= tracert -d google.com ;; tracert google.com -d ;; tracert /d google.com
+!warn Certains sites bloquent le ping (microsoft.com par exemple). Un ping sans réponse ne prouve pas qu’un site est hors ligne : teste aussi le port, ou le navigateur.
+
+### LESSON c10 ¦ nslookup et le DNS ¦ 2 ¦ Interroger un serveur DNS, lire la réponse, vérifier les enregistrements MX et SRV.
+>>> info ¦ Le DNS dans un domaine Active Directory
+Dans un domaine, les postes doivent utiliser **les contrôleurs de domaine** comme serveurs DNS (ici 192.168.10.5 et .6). Ce sont eux qui connaissent `contoso.local` et les enregistrements qui permettent de trouver l’AD.
+
+Un poste configuré avec 8.8.8.8 navigue sur Internet, mais ne trouve plus le domaine : ouverture de session lente, GPO non appliquées, lecteurs réseau absents.
+>>> info ¦ Lire nslookup
+```code cmd
+nslookup srv-fichiers
+```
+```out
+Serveur :   srv-ad01.contoso.local
+Address:  192.168.10.5
+
+Nom :    srv-fichiers.contoso.local
+Address:  192.168.10.10
+```
+Les deux premières lignes indiquent **quel serveur DNS a répondu**. La suite est la réponse.
+```anatomy cmd
+nslookup ¦ cmd ¦ **N**ame **S**erver **LOOKUP** : interroge un serveur DNS.
+-type=mx ¦ sw ¦ Le **type** d’enregistrement voulu : MX = **M**ail e**X**changer.
+contoso-hotels.com ¦ arg ¦ Le domaine à interroger.
+8.8.8.8 ¦ arg ¦ Facultatif : le serveur DNS à interroger, à la place de celui du poste.
+```
+>>> qcm ¦ nslookup affiche « Réponse ne faisant pas autorité ». Qu’est-ce que cela signifie ?
++ La réponse vient d’un serveur qui n’est pas responsable de ce domaine (souvent un cache)
+* Le nom n’existe pas
+* Le serveur DNS a refusé la requête
+* La réponse est fausse
+? C’est normal pour un nom Internet : ton DNS l’a obtenu ailleurs ou l’avait en cache. Ce n’est pas une erreur.
+>>> type cmd ¦ Vérifie quel serveur reçoit les e-mails du domaine contoso-hotels.com.
+= nslookup -type=mx contoso-hotels.com ;; nslookup -q=mx contoso-hotels.com ;; nslookup -querytype=mx contoso-hotels.com ;; nslookup -type=MX contoso-hotels.com
+```out
+Serveur :   srv-ad01.contoso.local
+Address:  192.168.10.5
+
+Réponse ne faisant pas autorité :
+contoso-hotels.com	MX preference = 0, mail exchanger = contoso-hotels-com.mail.protection.outlook.com
+```
+? Le MX pointe vers Exchange Online (mail.protection.outlook.com) : la messagerie est hébergée chez Microsoft 365.
+>>> type cmd ¦ Trouve les contrôleurs de domaine grâce à l’enregistrement SRV LDAP.
+= nslookup -type=srv _ldap._tcp.dc._msdcs.contoso.local ;; nslookup -q=srv _ldap._tcp.dc._msdcs.contoso.local ;; nslookup -type=SRV _ldap._tcp.dc._msdcs.contoso.local
+hint: Type `srv`, et le nom `_ldap._tcp.dc._msdcs.` suivi du domaine.
+```out
+_ldap._tcp.dc._msdcs.contoso.local	SRV service location:
+	  priority       = 0
+	  weight         = 100
+	  port           = 389
+	  svr hostname   = srv-ad01.contoso.local
+_ldap._tcp.dc._msdcs.contoso.local	SRV service location:
+	  priority       = 0
+	  weight         = 100
+	  port           = 389
+	  svr hostname   = srv-ad02.contoso.local
+```
+? C’est exactement ce que fait un poste pour trouver un contrôleur de domaine. Si cette requête échoue, le poste ne trouvera pas l’AD.
+>>> info ¦ Le fichier hosts, prioritaire sur le DNS
+`C:\Windows\System32\drivers\etc\hosts` associe des noms à des adresses, **avant** toute requête DNS. Un ancien test oublié ou un logiciel malveillant peut y détourner un nom.
+```code cmd
+type C:\Windows\System32\drivers\etc\hosts
+```
+>>> qcm ¦ Un nom se résout vers une mauvaise adresse sur un seul poste, même après `ipconfig /flushdns`. Que vérifies-tu ?
++ Le fichier hosts du poste
+* Le serveur DHCP
+* La passerelle
+* Le pare-feu du serveur
+? Le fichier hosts passe avant le DNS et n’est pas concerné par `/flushdns`. Une entrée oubliée suffit à tout expliquer.
+
+### LESSON c11 ¦ netstat, arp, route, getmac ¦ 2 ¦ Qui parle à qui, sur quel port, et avec quel programme.
+>>> info ¦ netstat : les connexions du poste
+```anatomy cmd
+netstat ¦ cmd ¦ **NET**work **STAT**istics : connexions et ports.
+-ano ¦ sw ¦ Trois options collées : **a** = toutes (all, y compris en écoute), **n** = adresses et ports en chiffres (numeric), **o** = PID du programme (owner).
+| ¦ op ¦ Pipe vers un filtre.
+findstr ¦ cmd ¦ Garde les lignes utiles.
+:3389 ¦ str ¦ Le port Bureau à distance (RDP).
+```
+>>> info ¦ Les états d’une connexion TCP
+```table
+État ¦ Signification
+`LISTENING` ¦ le poste attend des connexions sur ce port (un service écoute)
+`ESTABLISHED` ¦ connexion active
+`TIME_WAIT` ¦ connexion fermée récemment, en attente de nettoyage
+`CLOSE_WAIT` ¦ l’autre côté a fermé, le programme local pas encore
+`SYN_SENT` ¦ tentative de connexion sans réponse (pare-feu ? cible éteinte ?)
+```
+>>> type cmd ¦ Affiche toutes les connexions avec les ports en chiffres et le PID propriétaire.
+= netstat -ano ;; netstat -a -n -o ;; netstat -nao ;; netstat -oan ;; netstat -aon ;; netstat -noa ;; netstat -ona ;; netstat -ano | more
+```out
+
+Connexions actives
+
+  Proto  Adresse locale         Adresse distante       État           PID
+  TCP    0.0.0.0:135            0.0.0.0:0              LISTENING       1240
+  TCP    0.0.0.0:445            0.0.0.0:0              LISTENING          4
+  TCP    0.0.0.0:3389           0.0.0.0:0              LISTENING       1316
+  TCP    192.168.10.42:50231    52.97.211.162:443      ESTABLISHED     7344
+  TCP    192.168.10.42:50240    142.250.201.174:443    ESTABLISHED     6216
+  TCP    192.168.10.42:50412    192.168.10.12:9100     SYN_SENT        8920
+```
+>>> qcm ¦ La ligne `TCP 192.168.10.42:50412 192.168.10.12:9100 SYN_SENT 8920` reste bloquée. Comment savoir quel programme l’a ouverte ?
++ `tasklist /fi "pid eq 8920"`
+* `ping 192.168.10.12`
+* `ipconfig /all`
+* `netstat -r`
+? La dernière colonne est le PID. `tasklist` avec un filtre sur ce PID donne le nom du programme. (`netstat -b`, en administrateur, l’affiche directement.)
+>>> type cmd ¦ Retrouve le programme qui porte le PID 8920.
+= tasklist /fi "pid eq 8920" ;; tasklist /FI "PID eq 8920" ;; tasklist /fi "PID eq 8920" ;; tasklist | findstr 8920 ;; tasklist | find "8920"
+```out
+
+Nom de l’image                 PID Nom de la sessio Numéro de s Utilisation
+========================= ======== ================ =========== ============
+ScanAssist.exe                8920 Console                    1    60 288 Ko
+```
+? Un vieil utilitaire de numérisation qui tente sans fin de joindre le port 9100 (impression brute) : c’est sans doute lui qui ralentit le poste. On y reviendra dans une mission.
+>>> info ¦ arp, route, getmac
+- `arp -a` : la table **ARP** (adresse IP ↔ adresse MAC) des machines vues récemment sur le réseau local.
+- `route print` : la table de routage ; la ligne `0.0.0.0` est la route par défaut, vers la passerelle.
+- `getmac /v` : l’adresse MAC de chaque carte, avec son nom de connexion (**v**erbose).
+```code cmd
+getmac /v
+```
+```out
+
+Nom de la connexion Carte réseau    Adresse physique    Nom du transport
+=================== =============== =================== ==========================================================
+Ethernet            Intel(R) Ethern D4-81-D7-3A-6E-2C   \Device\Tcpip_{8C1D2F44-0A5E-4F62-9C11-77E0B1D9A0C3}
+Wi-Fi               Intel(R) Wi-Fi  70-A8-D3-11-42-9B   Média déconnecté
+```
+!it L’adresse MAC sert à créer une réservation DHCP, à autoriser un poste sur un réseau filtré, ou à retrouver le port de switch d’une machine.
+>>> qcm ¦ Quelle commande donne l’adresse MAC de chaque carte avec le nom de sa connexion ?
++ `getmac /v`
+* `arp -a`
+* `route print`
+* `netstat -e`
+? `getmac /v` associe chaque MAC à « Ethernet », « Wi-Fi »… `arp -a` montre les MAC des **autres** machines.
+
+### LESSON c12 ¦ Partages réseau : net use, net share, net view ¦ 1 ¦ Connecter un lecteur, comprendre les erreurs 53, 67 et 85.
+>>> info ¦ Connecter un lecteur réseau
+```anatomy cmd
+net ¦ cmd ¦ La boîte à outils réseau de Windows.
+use ¦ kw ¦ Sous-commande : gérer les connexions aux partages.
+Z: ¦ arg ¦ La lettre de lecteur à utiliser (`*` = la première libre).
+\\SRV-FICHIERS\Compta ¦ path ¦ Le partage, en chemin UNC.
+/persistent:yes ¦ sw ¦ Reconnecter le lecteur à chaque ouverture de session.
+```
+- `net use` seul : liste les connexions.
+- `net use Z: /delete` : déconnecte Z:. `net use * /delete` : déconnecte tout.
+>>> type cmd ¦ Connecte le lecteur Z: au partage \\SRV-FICHIERS\Compta.
+= net use Z: \\SRV-FICHIERS\Compta ;; net use Z: \\SRV-FICHIERS\Compta /persistent:yes ;; net use Z: \\SRV-FICHIERS\Compta /persistent:no ;; net use Z: "\\SRV-FICHIERS\Compta"
+```out
+La commande s’est terminée correctement.
+```
+>>> info ¦ Les erreurs de net use
+```table
+Erreur ¦ Signification ¦ Piste
+53 ¦ chemin réseau introuvable ¦ serveur éteint, nom faux, pare-feu SMB (445)
+67 ¦ nom réseau introuvable ¦ le serveur répond, mais le **partage** n’existe pas
+85 ¦ nom de périphérique déjà utilisé ¦ la lettre est déjà prise : `net use Z: /delete`
+86 / 1326 ¦ mot de passe incorrect ¦ identifiants enregistrés obsolètes (`cmdkey /list`)
+5 ¦ accès refusé ¦ droits de partage ou NTFS
+```
+`net helpmsg 53` affiche le texte de n’importe quel code.
+>>> qcm ¦ `net use Z: \\SRV-FICHIERS\Compta` répond « Erreur système 85 ». Que faire ?
++ Libérer la lettre Z: (`net use Z: /delete`) ou en choisir une autre
+* Redémarrer le serveur de fichiers
+* Vérifier le mot de passe
+* Recréer le partage
+? 85 = la lettre est déjà utilisée, souvent par une ancienne connexion ou une GPO.
+>>> type cmd ¦ Déconnecte le lecteur Z:.
+= net use Z: /delete ;; net use Z: /del ;; net use Z: /d
+>>> info ¦ Voir les partages
+- `net view \\SRV-FICHIERS` : liste les partages visibles d’un serveur.
+- `net share` : liste les partages **du poste local**, dont les partages administratifs `C$`, `ADMIN$`, `IPC$`.
+```code cmd
+net view \\SRV-FICHIERS
+```
+```out
+Ressources partagées de \\SRV-FICHIERS
+
+
+
+Nom du partage  Type    Utilisé comme  Commentaire
+
+-------------------------------------------------------------------------------
+Compta          Disque  Z:
+Partage         Disque
+RH              Disque
+La commande s’est terminée correctement.
+```
+!it « Mon lecteur réseau a disparu » : vérifie `net use`, puis la GPO de mappage (`gpresult /r`), puis les identifiants enregistrés (`cmdkey /list`).
+
+### LESSON c13 ¦ netsh : Wi-Fi, IP et pare-feu ¦ 3 ¦ Profils Wi-Fi, adresse fixe, état du pare-feu, réinitialisation de la pile réseau.
+>>> info ¦ netsh, un shell dans le shell
+`netsh` (**NET**work **SH**ell) est organisé en **contextes** : `wlan` (Wi-Fi), `interface ip` (adressage), `advfirewall` (pare-feu), `winsock`, `winhttp` (proxy système)…
+```code cmd
+netsh wlan show profiles
+```
+```out
+
+Profils sur l’interface Wi-Fi :
+
+Profils utilisateurs
+--------------------
+    Profil Tous les utilisateurs : CONTOSO-GUEST
+    Profil Tous les utilisateurs : Livebox-Accueil
+```
+>>> info ¦ Retrouver une clé Wi-Fi enregistrée
+```anatomy cmd
+netsh ¦ cmd ¦ Le shell réseau.
+wlan ¦ kw ¦ Contexte Wi-Fi (**W**ireless **LAN**).
+show profile ¦ kw ¦ Affiche un profil enregistré.
+name="CONTOSO-GUEST" ¦ str ¦ Le nom du réseau.
+key=clear ¦ sw ¦ Affiche la clé **en clair** (fenêtre élevée requise).
+```
+!warn La clé apparaît en clair à l’écran : ne le fais pas devant un public, et seulement pour un réseau que tu administres.
+>>> type cmd ¦ Affiche l’état du pare-feu Windows pour tous les profils.
+= netsh advfirewall show allprofiles state ;; netsh advfirewall show allprofiles
+```out
+
+Paramètres Profil de domaine :
+----------------------------------------------------------------------
+État                                  ACTIVER
+
+Paramètres Profil privé :
+----------------------------------------------------------------------
+État                                  ACTIVER
+
+Paramètres Profil public :
+----------------------------------------------------------------------
+État                                  ACTIVER
+Ok.
+```
+>>> info ¦ Passer en IP fixe, puis revenir en DHCP
+```code cmd
+netsh interface ip set address "Ethernet" static 192.168.10.50 255.255.255.0 192.168.10.1
+netsh interface ip set address "Ethernet" dhcp
+```
+Ordre des valeurs : adresse, masque, passerelle. Le nom de la carte (« Ethernet ») est celui affiché par `ipconfig`.
+>>> fill cmd ¦ Remets la carte Ethernet en adressage automatique.
+```code cmd
+netsh interface ip set address "Ethernet" ___
+```
+= dhcp
+~ static ;; auto ;; renew
+? `dhcp` rend la configuration automatique. Pense aussi aux DNS : `netsh interface ip set dns "Ethernet" dhcp`.
+>>> info ¦ Réinitialiser la pile réseau
+Après une désinstallation de VPN ou d’antivirus, la pile réseau peut rester abîmée : pages qui ne chargent pas, erreurs de socket. Deux commandes la remettent à neuf :
+```code cmd
+netsh winsock reset
+netsh int ip reset
+```
+```out
+
+Catalogue Winsock réinitialisé.
+Vous devez redémarrer l’ordinateur pour terminer la réinitialisation.
+```
+>>> qcm ¦ Que faut-il faire après `netsh winsock reset` ?
++ Redémarrer l’ordinateur
+* Lancer ipconfig /renew
+* Se déconnecter du domaine
+* Rien, c’est immédiat
+? Le catalogue Winsock n’est rechargé qu’au démarrage. Préviens l’utilisateur avant.

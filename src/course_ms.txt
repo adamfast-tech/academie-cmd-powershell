@@ -1,0 +1,618 @@
+=== ms ¦ Tickets du support ¦ ms ¦ Des incidents réels d’un hôtel en domaine Windows : diagnostique, corrige, documente.
+--- Incidents du quotidien
+### MISSION m1 ¦ « Internet ne marche plus » ¦ 1 ¦ Un poste de la réception n’accède plus à rien. Diagnostic couche par couche.
+@ticket INC-2041 ¦ P2 — Haute ¦ Réception ¦ Karim Benali ¦ Plus d’Internet ni de logiciel de réservation sur le poste de la réception
+>>> info ¦ Le contexte
+Karim t’appelle : « Plus rien ne marche sur mon PC, ni Internet, ni le logiciel de réservation. Le PC d’à côté fonctionne. »
+
+**Méthode** : on teste du plus proche au plus loin. Carte réseau → adresse IP → passerelle → DNS → Internet. La première étape qui échoue localise la panne.
+
+Tu prends la main sur le poste (Assistance rapide) et ouvres une invite de commandes.
+>>> qcm ¦ Par quoi commences-tu ?
++ `ipconfig` : vérifier que le poste a une adresse IP valide
+* `ping google.com`
+* Redémarrer le serveur de réservation
+* Réinstaller le navigateur
+? On part toujours du poste lui-même. Si l’adresse IP est mauvaise, inutile d’aller plus loin.
+>>> qcm ¦ `ipconfig` affiche ceci. Que comprends-tu ?
+```out
+Carte Ethernet Ethernet :
+
+   Suffixe DNS propre à la connexion. . . :
+   Adresse IPv4 de configuration automatique: 169.254.83.17
+   Masque de sous-réseau. . . . . . . . . : 255.255.0.0
+   Passerelle par défaut. . . . . . . . . :
+```
++ Le poste n’a pas obtenu d’adresse du serveur DHCP et s’en est attribué une lui-même (APIPA)
+* Le poste a une adresse IP correcte
+* Le DNS est en panne
+* La passerelle est mal configurée à la main
+? Une adresse **169.254.x.x** (APIPA : **A**utomatic **P**rivate **IP** **A**ddressing) = aucune réponse DHCP. Causes : câble, prise réseau, port de switch, ou serveur DHCP indisponible.
+>>> info ¦ Vérifier le physique avant tout
+Avant de taper des commandes : le câble est-il bien clipsé ? Le voyant de la prise réseau clignote-t-il ? Karim confirme : le câble avait été débranché par le ménage ce matin. Il le rebranche.
+
+Il faut maintenant redemander une adresse au serveur DHCP.
+>>> order cmd ¦ Libère l’ancienne configuration puis redemande une adresse, en une ligne.
+~ ipconfig ;; /release ;; && ;; ipconfig ;; /renew
+x~ /flushdns ;; /all ;; |
+? `/release` rend le bail, `/renew` en redemande un. `&&` enchaîne seulement si la première partie a réussi.
+>>> type cmd ¦ L’adresse est revenue (192.168.10.73). Vérifie que la passerelle 192.168.10.1 répond.
+= ping 192.168.10.1 ;; ping -n 4 192.168.10.1 ;; ping -n 2 192.168.10.1 ;; ping -n 1 192.168.10.1
+```out
+
+Envoi d’une requête 'Ping'  192.168.10.1 avec 32 octets de données :
+Réponse de 192.168.10.1 : octets=32 temps<1ms TTL=64
+Réponse de 192.168.10.1 : octets=32 temps<1ms TTL=64
+Réponse de 192.168.10.1 : octets=32 temps<1ms TTL=64
+Réponse de 192.168.10.1 : octets=32 temps<1ms TTL=64
+
+Statistiques Ping pour 192.168.10.1:
+    Paquets : envoyés = 4, reçus = 4, perdus = 0 (perte 0%),
+```
+>>> qcm ¦ Karim dit que le site de réservation ne s’ouvre toujours pas. `ping 8.8.8.8` répond, mais `ping booking-contoso.com` affiche « La requête Ping n’a pas pu trouver l’hôte ». Où est le problème ?
++ Dans la résolution DNS des noms
+* Dans le câble réseau
+* Dans la passerelle
+* Le site est hors ligne
+? L’accès IP à Internet fonctionne (8.8.8.8 répond), mais le nom ne se traduit pas en adresse : c’est le **DNS**.
+>>> type cmd ¦ Vide le cache DNS du poste, qui a pu garder des réponses négatives pendant la coupure.
+= ipconfig /flushdns
+```out
+
+Configuration IP de Windows
+
+Cache de résolution DNS vidé.
+```
+? Windows mémorise aussi les **échecs** de résolution pendant quelques minutes : après une coupure, le vider évite d’attendre.
+>>> type cmd ¦ Vérifie que le serveur DNS de l’entreprise résout bien le nom srv-fichiers.
+= nslookup srv-fichiers ;; nslookup srv-fichiers.contoso.local ;; nslookup SRV-FICHIERS
+? Serveur : `SRV-AD01.contoso.local`, adresse : `192.168.10.10`. Tout est rentré dans l’ordre.
+>>> info ¦ Clôturer le ticket
+Une bonne clôture explique **cause**, **action** et **prévention** :
+```out
+Cause : câble réseau débranché → pas de bail DHCP → adresse APIPA 169.254.83.17.
+Action : câble rebranché, ipconfig /release + /renew, ipconfig /flushdns. Tests OK :
+         passerelle, DNS interne, Internet, logiciel de réservation.
+Prévention : câble passé dans la goulotte sous le comptoir.
+```
+!tip Le script `C:\Scripts\diag_reseau.bat` vu dans la piste CMD fait ces vérifications d’un coup : tu peux le faire lancer par l’utilisateur avant même de prendre la main.
+
+### MISSION m2 ¦ « Mon compte se bloque tout le temps » ¦ 2 ¦ Déverrouiller ne suffit pas : trouver le poste qui envoie un vieux mot de passe.
+@ticket INC-2056 ¦ P2 — Haute ¦ Ressources humaines ¦ Marie Lefèvre ¦ Compte verrouillé trois fois depuis ce matin
+>>> info ¦ Le contexte
+Marie a changé son mot de passe lundi (il expirait). Depuis, son compte se **verrouille** plusieurs fois par jour, même quand elle ne tape rien.
+
+Tu as vérifié son identité (rappel sur son poste fixe de l’annuaire). Ouvre PowerShell sur ton poste d’administration.
+>>> type ps ¦ Confirme que son compte (mlefevre) est verrouillé et affiche le nombre de mauvais mots de passe.
+= Get-ADUser mlefevre -Properties LockedOut, BadLogonCount ;; Get-ADUser mlefevre -Properties LockedOut, BadLogonCount, LastBadPasswordAttempt ;; Get-ADUser mlefevre -Properties * ;; Get-ADUser -Identity mlefevre -Properties LockedOut, BadLogonCount ;; Get-ADUser mlefevre -Properties BadLogonCount, LockedOut ;; Get-ADUser mlefevre -Properties LockedOut,BadLogonCount | Select-Object Name, LockedOut, BadLogonCount ;; Get-ADUser mlefevre -Properties LockedOut, BadLogonCount, LastBadPasswordAttempt | Select-Object Name, LockedOut, BadLogonCount, LastBadPasswordAttempt
+hint: `Get-ADUser mlefevre -Properties LockedOut, BadLogonCount`
+```out
+
+LockedOut              : True
+BadLogonCount          : 5
+LastBadPasswordAttempt : 08/10/2026 08:47:03
+```
+>>> qcm ¦ Le changement de mot de passe date de lundi et le compte se reverrouille sans que Marie tape quoi que ce soit. Hypothèse la plus probable ?
++ Un appareil ou une session utilise encore l’ancien mot de passe automatiquement
+* Quelqu’un essaie de deviner son mot de passe
+* Le contrôleur de domaine est en panne
+* Son clavier est défectueux
+? Cas le plus fréquent de loin. Une attaque reste possible : c’est justement l’événement 4740 qui permettra de trancher (poste interne connu, ou source inconnue).
+>>> type ps ¦ Cherche les derniers événements de verrouillage sur le contrôleur PDC (SRV-AD01).
+= Get-WinEvent -ComputerName SRV-AD01 -FilterHashtable @{LogName='Security'; Id=4740} -MaxEvents 5 ;; Get-WinEvent -ComputerName SRV-AD01 -FilterHashtable @{LogName="Security"; Id=4740} -MaxEvents 5 ;; Get-WinEvent -ComputerName SRV-AD01 -FilterHashtable @{LogName='Security'; Id=4740} ;; Get-WinEvent -ComputerName SRV-AD01 -FilterHashtable @{LogName="Security"; Id=4740} ;; Get-WinEvent -FilterHashtable @{LogName='Security'; Id=4740} -ComputerName SRV-AD01 ;; Get-WinEvent -FilterHashtable @{LogName='Security'; Id=4740} -ComputerName SRV-AD01 -MaxEvents 5
+hint: `Get-WinEvent -ComputerName SRV-AD01 -FilterHashtable @{LogName='Security'; Id=4740}`
+```out
+
+TimeCreated            Id Message
+-----------            -- -------
+08/10/2026 08:47:03  4740 Un compte d’utilisateur a été verrouillé.…
+                          Compte verrouillé : mlefevre
+                          Nom de l’ordinateur appelant : PC-RECEP-02
+```
+>>> qcm ¦ L’ordinateur appelant est PC-RECEP-02, un poste de l’accueil. Marie se souvient d’y avoir remplacé une réceptionniste il y a deux semaines. Que cherches-tu sur ce poste ?
++ Une session restée ouverte ou des identifiants enregistrés à son nom
+* Un virus
+* Un problème de câble réseau
+* Une mise à jour Windows manquante
+? Une session RDP déconnectée, un lecteur réseau mappé avec « Se souvenir de mes identifiants » ou une entrée du Gestionnaire d’identification rejouent l’ancien mot de passe.
+>>> type cmd ¦ Sur PC-RECEP-02 (une fois rallumé), liste les identifiants enregistrés dans le Gestionnaire d’identification.
+= cmdkey /list ;; cmdkey /l
+```out
+
+    Cible : Domain:target=SRV-FICHIERS
+    Type : Mot de passe du domaine
+    Utilisateur : CONTOSO\mlefevre
+```
+? Trouvé : un lecteur vers SRV-FICHIERS mappé avec son compte et l’**ancien** mot de passe.
+>>> fill cmd ¦ Supprime ces identifiants enregistrés.
+```code cmd
+cmdkey ___:SRV-FICHIERS
+```
+= /delete
+~ /add ;; /list ;; /remove ;; /d
+? `cmdkey /delete:cible` (ou `/delete /ras` pour les connexions d’accès distant). Pense aussi à `net use` pour voir les lecteurs mappés.
+>>> type ps ¦ Déverrouille enfin le compte de Marie.
+= Unlock-ADAccount mlefevre ;; Unlock-ADAccount -Identity mlefevre ;; Get-ADUser mlefevre | Unlock-ADAccount ;; Search-ADAccount -LockedOut | Unlock-ADAccount
+>>> info ¦ Clôture
+```out
+Cause : identifiants enregistrés (ancien mot de passe) pour SRV-FICHIERS sur PC-RECEP-02,
+        utilisés lors d’un remplacement à l’accueil.
+Diagnostic : événement 4740 sur le PDC SRV-AD01 → ordinateur appelant PC-RECEP-02.
+Action : cmdkey /delete:SRV-FICHIERS sur PC-RECEP-02, déverrouillage du compte.
+Prévention : rappel aux remplaçants de se déconnecter ; ne pas enregistrer ses identifiants sur un poste partagé.
+```
+!tip Tu peux t’entraîner pour de vrai dans le **Terminal** : `Search-ADAccount -LockedOut`, puis `Unlock-ADAccount mlefevre` (défi n°11).
+
+### MISSION m3 ¦ « Le serveur de fichiers est plein » ¦ 3 ¦ Mesurer, trouver les gros fichiers, archiver sans rien casser.
+@ticket INC-2063 ¦ P1 — Critique ¦ Tous services ¦ Supervision ¦ SRV-FICHIERS : volume D: à 97 %
+>>> info ¦ Le contexte
+L’alerte de supervision tombe : le volume de données du serveur de fichiers est presque plein. Si D: atteint 100 %, plus personne ne peut enregistrer ses documents.
+
+Contraintes : **WinRM n’est pas activé** sur les serveurs. Tu travailles depuis ton poste, via les partages d’administration et CIM en DCOM.
+>>> type ps ¦ Ouvre une session CIM en DCOM vers SRV-FICHIERS et range-la dans $s.
+= $s = New-CimSession -ComputerName SRV-FICHIERS -SessionOption (New-CimSessionOption -Protocol Dcom) ;; $s=New-CimSession -ComputerName SRV-FICHIERS -SessionOption (New-CimSessionOption -Protocol Dcom) ;; $s = New-CimSession SRV-FICHIERS -SessionOption (New-CimSessionOption -Protocol Dcom)
+hint: `$s = New-CimSession -ComputerName SRV-FICHIERS -SessionOption (New-CimSessionOption -Protocol Dcom)`
+>>> fill ps ¦ Affiche l’espace libre de chaque disque du serveur, en Go.
+```code ps
+Get-CimInstance Win32_LogicalDisk -CimSession $s -Filter "DriveType=3" |
+    Select-Object DeviceID, @{N='Libre (Go)'; E={ [math]::Round($_.___ / 1GB, 1) }}
+```
+= FreeSpace
+~ Size ;; Free ;; Length ;; Capacity
+? `FreeSpace` = espace libre en octets ; `Size` = capacité totale. `Length` est la taille d’un fichier, pas d’un disque.
+>>> info ¦ Trouver où est la place
+Via le partage d’administration `\\SRV-FICHIERS\D$`, on mesure chaque dossier de premier niveau :
+```code ps
+Get-ChildItem \\SRV-FICHIERS\D$\Partages -Directory | ForEach-Object {
+    [PSCustomObject]@{
+        Dossier = $_.Name
+        Go      = [math]::Round((Get-ChildItem $_.FullName -Recurse -File -ErrorAction SilentlyContinue |
+                    Measure-Object Length -Sum).Sum / 1GB, 1)
+    }
+} | Sort-Object Go -Descending
+```
+```out
+
+Dossier       Go
+-------       --
+Marketing  412,6
+Compta      88,3
+RH          41,7
+Direction   12,9
+```
+!it Le Marketing pèse 400 Go : vidéos de tournage de la nouvelle campagne. Les gros consommateurs d’espace sont presque toujours des médias, des archives .pst ou des sauvegardes oubliées.
+>>> order ps ¦ Construis : les 10 plus gros fichiers du partage Marketing.
+~ Get-ChildItem \\SRV-FICHIERS\D$\Partages\Marketing -Recurse -File ;; | ;; Sort-Object Length -Descending ;; | ;; Select-Object -First 10 FullName, @{N='Go';E={[math]::Round($_.Length/1GB,1)}}
+x~ Format-Table ;; Measure-Object
+? Produire (récursif, fichiers seulement) → trier du plus gros au plus petit → garder les 10 premiers avec une colonne en Go.
+>>> qcm ¦ Tu trouves 180 Go de fichiers `.mov` de 2024 dans « Marketing\Rushes ». Que fais-tu ?
++ Valider avec la responsable Marketing, puis déplacer vers l’archive avec robocopy
+* Les supprimer immédiatement, ils sont vieux
+* Les compresser sur place avec Compress-Archive
+* Agrandir le disque sans prévenir personne
+? On ne supprime jamais les données d’un service sans son accord. L’archivage libère la place en conservant les fichiers.
+>>> info ¦ Archiver avec robocopy /MOV
+```code cmd
+robocopy "\\SRV-FICHIERS\D$\Partages\Marketing\Rushes" "\\SRV-ARCHIVE\Archives$\Marketing\Rushes" /E /MOV /MINAGE:365 /R:1 /W:1 /LOG:C:\Logs\archivage_marketing.log /TEE
+```
+```anatomy cmd
+/E ¦ sw ¦ Tous les sous-dossiers, même vides.
+/MOV ¦ sw ¦ **MOV**e files : supprime chaque fichier de la source **après** une copie réussie.
+/MINAGE:365 ¦ sw ¦ **MIN**imum **AGE** : seulement les fichiers de plus de 365 jours.
+/R:1 /W:1 ¦ sw ¦ 1 nouvelle tentative, 1 seconde d’attente (au lieu de 1 million et 30 s par défaut).
+/LOG: ¦ sw ¦ Journal écrit dans un fichier…
+/TEE ¦ sw ¦ …et affiché à l’écran en même temps.
+```
+!warn Fais un premier passage avec **`/L`** (**L**ist only) : robocopy affiche ce qu’il ferait sans rien déplacer.
+>>> fill cmd ¦ Ajoute le commutateur qui simule l’opération.
+```code cmd
+robocopy D:\Partages\Marketing\Rushes \\SRV-ARCHIVE\Archives$\Marketing\Rushes /E /MOV /MINAGE:365 ___
+```
+= /L
+~ /S ;; /MIR ;; /WhatIf ;; /TEST
+? `/L` (**L**ist only) affiche ce qui serait déplacé sans rien toucher. `-WhatIf` est l’équivalent PowerShell, robocopy ne le connaît pas.
+>>> info ¦ Clôture
+```out
+Cause : 180 Go de rushes vidéo 2024 du Marketing sur D: (SRV-FICHIERS).
+Action : accord de C. Lambert, archivage robocopy /MOV /MINAGE:365 vers SRV-ARCHIVE
+         (test /L préalable, journal C:\Logs\archivage_marketing.log). D: à 61 %.
+Prévention : quota FSRM de 250 Go sur le partage Marketing ; procédure d’archivage annuelle.
+```
+
+### MISSION m4 ¦ Arrivée de trois saisonniers ¦ 3 ¦ Créer les comptes, les ranger, leur donner les bons groupes, en sécurité.
+@ticket REQ-3310 ¦ P3 — Normale ¦ Ressources humaines ¦ Marie Lefèvre ¦ Comptes pour Léa Durand, Maxime Faure et Inès Blanc (arrivée le 12/10)
+>>> info ¦ La demande
+Les RH ont déposé le fichier `C:\Data\utilisateurs_a_creer.csv` (logins, services, titres, OU). Chaque nouvel arrivant doit :
+- avoir un compte **actif** avec un mot de passe provisoire à changer à la première connexion ;
+- être rangé dans l’OU de son service ;
+- être membre du groupe **métier** de son service (`GG_Reception`, `GG_Compta`…).
+>>> type ps ¦ Affiche le contenu du CSV sous forme d’objets (séparateur point-virgule).
+= Import-Csv C:\Data\utilisateurs_a_creer.csv -Delimiter ';' ;; Import-Csv C:\Data\utilisateurs_a_creer.csv -Delimiter ";" ;; Import-Csv -Path C:\Data\utilisateurs_a_creer.csv -Delimiter ';' ;; Import-Csv C:\Data\utilisateurs_a_creer.csv -UseCulture ;; Import-Csv C:\Data\utilisateurs_a_creer.csv -Delimiter ';' | Format-Table
+>>> qcm ¦ Avant de créer quoi que ce soit, que vérifies-tu pour chaque ligne ?
++ Qu’aucun compte n’existe déjà avec le même login
+* Que l’utilisateur a un smartphone
+* Que le PC de destination est allumé
+* Que le CSV est en lecture seule
+? `Get-ADUser -Filter "SamAccountName -eq '$($u.Login)'"` : un doublon ferait échouer la création (ou pire, tu modifierais le mauvais compte).
+>>> fill ps ¦ Demande le mot de passe provisoire de façon masquée.
+```code ps
+$mdp = Read-Host 'Mot de passe provisoire' ___
+```
+= -AsSecureString
+~ -MaskInput ;; -Secure ;; -Hidden ;; -Password
+? La saisie s’affiche en étoiles et la valeur est directement une SecureString, acceptée par `-AccountPassword`.
+>>> info ¦ Le lien service → groupe
+Le CSV donne le **service**, pas le groupe. Une table de hachage fait la correspondance :
+```code ps
+$groupes = @{
+    'Réception'    = 'GG_Reception'
+    'Comptabilité' = 'GG_Compta'
+    'Spa'          = 'GG_Spa'
+}
+$groupes['Comptabilité']
+```
+```out
+GG_Compta
+```
+>>> order ps ¦ Dans la boucle, après New-ADUser, ajoute le nouvel utilisateur au groupe de son service.
+~ Add-ADGroupMember ;; -Identity $groupes[$u.Service] ;; -Members $u.Login
+x~ Set-ADGroup ;; -MemberOf ;; $u.Groupe
+? `$groupes[$u.Service]` traduit le service du CSV en nom de groupe grâce à la table de hachage.
+>>> qcm ¦ `GG_Spa` n’existe pas encore dans l’annuaire. Que se passe-t-il pour Inès ?
++ Son compte est créé, mais l’ajout au groupe échoue avec une erreur « Impossible de trouver un objet »
+* Rien n’est créé pour Inès
+* PowerShell crée automatiquement le groupe
+* Inès est ajoutée à GG_Reception
+? D’où l’intérêt de vérifier les groupes avant (`Get-ADGroup GG_Spa`) ou de gérer l’erreur avec try/catch et un rapport en fin de script.
+>>> type ps ¦ Crée le groupe global de sécurité GG_Spa dans l’OU Groupes.
+= New-ADGroup -Name GG_Spa -GroupScope Global -GroupCategory Security -Path 'OU=Groupes,DC=contoso,DC=local' ;; New-ADGroup -Name GG_Spa -GroupScope Global -GroupCategory Security -Path "OU=Groupes,DC=contoso,DC=local" ;; New-ADGroup GG_Spa -GroupScope Global -Path 'OU=Groupes,DC=contoso,DC=local' ;; New-ADGroup -Name GG_Spa -GroupScope Global -Path 'OU=Groupes,DC=contoso,DC=local' ;; New-ADGroup -Name 'GG_Spa' -GroupScope Global -GroupCategory Security -Path 'OU=Groupes,DC=contoso,DC=local'
+hint: `New-ADGroup -Name GG_Spa -GroupScope Global -GroupCategory Security -Path 'OU=Groupes,DC=contoso,DC=local'`
+>>> info ¦ Clôture
+```out
+Action : 3 comptes créés depuis utilisateurs_a_creer.csv (test -WhatIf préalable),
+         actifs, changement de mot de passe exigé, rangés dans leur OU.
+         Groupe GG_Spa créé ; ajouts GG_Reception, GG_Compta, GG_Spa.
+Communication : mots de passe provisoires remis par téléphone aux responsables, pas par mail.
+```
+
+--- Parc et maintenance
+### MISSION m5 ¦ Inventaire du parc pour la direction ¦ 3 ¦ Modèle, numéro de série, mémoire et OS de chaque poste, dans Excel, sans WinRM.
+@ticket REQ-3322 ¦ P3 — Normale ¦ Direction ¦ Sophie Martin ¦ Liste des PC avec modèle et âge pour le budget de renouvellement
+>>> info ¦ Le script de l’équipe
+L’équipe a déjà un script, `C:\Scripts\inventaire.ps1`. Tu vas le lire, le comprendre, puis le lancer.
+```script ps C:\Scripts\inventaire.ps1
+param(
+    [string]$OU = "OU=Postes,OU=Ordinateurs,DC=contoso,DC=local",
+    [string]$Sortie = "C:\Temp\inventaire_parc.csv"
+)
+$opt = New-CimSessionOption -Protocol Dcom
+$resultats = foreach ($pc in Get-ADComputer -Filter 'Enabled -eq $true' -SearchBase $OU) {
+    $nom = $pc.Name
+    if (-not (Test-Connection -ComputerName $nom -Count 1 -Quiet)) {
+        Write-Warning "$nom injoignable"
+        [PSCustomObject]@{ Poste = $nom; Etat = 'Hors ligne'; Modele = ''; Serie = ''; RAM_Go = ''; OS = '' }
+        continue
+    }
+    $s    = New-CimSession -ComputerName $nom -SessionOption $opt
+    $cs   = Get-CimInstance Win32_ComputerSystem -CimSession $s
+    $bios = Get-CimInstance Win32_BIOS -CimSession $s
+    $os   = Get-CimInstance Win32_OperatingSystem -CimSession $s
+    Remove-CimSession $s
+    [PSCustomObject]@{
+        Poste  = $nom
+        Etat   = 'En ligne'
+        Modele = $cs.Model
+        Serie  = $bios.SerialNumber
+        RAM_Go = [math]::Round($cs.TotalPhysicalMemory / 1GB)
+        OS     = $os.Caption
+    }
+}
+$resultats | Export-Csv -Path $Sortie -NoTypeInformation -Delimiter ';' -Encoding UTF8
+```
+>>> qcm ¦ Pourquoi le script utilise-t-il `New-CimSessionOption -Protocol Dcom` ?
++ Parce que WinRM n’est pas activé sur les postes : DCOM passe par RPC
+* Parce que DCOM est plus récent que WinRM
+* Pour chiffrer le fichier CSV
+* Pour interroger Active Directory
+? Sans cette option, `New-CimSession` tenterait WS-Man (WinRM, port 5985) et échouerait sur chaque poste.
+>>> qcm ¦ À quoi sert `$resultats = foreach (…) { … }` ?
++ À récupérer dans une variable tous les objets produits par la boucle
+* À compter les postes
+* À ne garder que le dernier poste
+* À rien, c’est une erreur
+? Tout ce que la boucle **produit** (les [PSCustomObject]) est collecté dans `$resultats`, plus efficace que `+=` à chaque tour.
+>>> qcm ¦ Que fait `continue` dans le bloc « injoignable » ?
++ Passe au poste suivant sans tenter la connexion CIM
+* Arrête tout le script
+* Relance le test de ping
+* Réessaie le même poste
+? Le poste hors ligne figure quand même dans le rapport (objet « Hors ligne »), puis on passe au suivant.
+>>> fill ps ¦ Le script doit tourner sur un poste où la stratégie d’exécution est Restricted, sans la modifier. Complète la commande.
+```code cmd
+powershell.exe ___ Bypass -File C:\Scripts\inventaire.ps1
+```
+= -ExecutionPolicy
+~ -Policy ;; -Scope ;; -NoProfile ;; /bypass
+? La stratégie passée sur la ligne de commande ne vaut que pour ce processus : le réglage du poste reste inchangé.
+>>> type ps ¦ Lance le script en lui indiquant d’écrire le résultat dans C:\Temp\parc.csv.
+= C:\Scripts\inventaire.ps1 -Sortie C:\Temp\parc.csv ;; & C:\Scripts\inventaire.ps1 -Sortie C:\Temp\parc.csv ;; & 'C:\Scripts\inventaire.ps1' -Sortie C:\Temp\parc.csv ;; & "C:\Scripts\inventaire.ps1" -Sortie C:\Temp\parc.csv ;; C:\Scripts\inventaire.ps1 -Sortie 'C:\Temp\parc.csv' ;; C:\Scripts\inventaire.ps1 -Sortie "C:\Temp\parc.csv"
+? Dans le Terminal du site, la stratégie est `Restricted` au départ : tu verras l’erreur, puis tu pourras lancer `Set-ExecutionPolicy RemoteSigned -Scope CurrentUser` et réessayer.
+>>> info ¦ Aller plus loin
+Améliorations possibles, que tu sais maintenant écrire :
+- ajouter la **date du BIOS** (`$bios.ReleaseDate`) pour estimer l’âge du poste ;
+- ajouter l’**utilisateur connecté** (`$cs.UserName`) et l’espace disque (`Win32_LogicalDisk`) ;
+- entourer la partie CIM d’un `try { } catch { }` avec `-ErrorAction Stop` : un pare-feu qui bloque WMI ne doit pas arrêter le script ;
+- planifier le script chaque lundi (`schtasks /create … /sc weekly /d MON`).
+
+### MISSION m6 ¦ « L’imprimante de l’accueil n’imprime plus » ¦ 2 ¦ File d’attente bloquée : la vider proprement, en local et à distance.
+@ticket INC-2077 ¦ P2 — Haute ¦ Réception ¦ Karim Benali ¦ Les factures clients ne sortent plus sur IMP-RECEP
+>>> info ¦ Le contexte
+Karim : « J’ai lancé l’impression de la facture de la chambre 214, rien ne sort. Depuis, plus rien ne s’imprime, même pour mes collègues. »
+
+Une file d’attente bloquée par **un** travail en erreur est le cas le plus courant : tant qu’il n’est pas retiré, les suivants attendent.
+>>> type ps ¦ Affiche les travaux en attente de l’imprimante IMP-RECEP.
+= Get-PrintJob -PrinterName IMP-RECEP ;; Get-PrintJob IMP-RECEP ;; Get-PrintJob -PrinterName 'IMP-RECEP' ;; Get-PrintJob -PrinterName "IMP-RECEP"
+```out
+
+Id    ComputerName    PrinterName     DocumentName             SubmittedTime          JobStatus
+--    ------------    -----------     ------------             -------------          ---------
+12                    IMP-RECEP       Facture_Chambre_214.pdf  08/10/2026 08:31:00    Error
+```
+>>> fill ps ¦ Supprime le travail n°12 en erreur.
+```code ps
+Remove-PrintJob -PrinterName IMP-RECEP -___ 12
+```
+= ID
+~ Job ;; Name ;; Index ;; Number
+? Ou par le pipeline : `Get-PrintJob IMP-RECEP | Where-Object JobStatus -like '*Error*' | Remove-PrintJob`.
+>>> info ¦ Quand la suppression ne suffit pas
+Parfois le travail reste coincé en « Suppression… ». Il faut alors **arrêter le spouleur**, vider son dossier, et le redémarrer :
+```code cmd
+net stop spooler
+del /q /f %SystemRoot%\System32\spool\PRINTERS\*.*
+net start spooler
+```
+```anatomy cmd
+net stop spooler ¦ cmd ¦ Arrête le service : il libère les fichiers de la file.
+del ¦ cmd ¦ Supprime…
+/q ¦ sw ¦ **Q**uiet : sans demander de confirmation pour `*.*`.
+/f ¦ sw ¦ **F**orce : même les fichiers en lecture seule.
+%SystemRoot%\System32\spool\PRINTERS\*.* ¦ path ¦ Les fichiers .SPL (données) et .SHD (paramètres) des travaux en attente.
+net start spooler ¦ cmd ¦ Relance le service avec une file vide.
+```
+!warn Cette méthode efface **tous** les travaux de **toutes** les imprimantes gérées par ce spouleur. Sur le serveur d’impression, préviens les utilisateurs.
+>>> order cmd ¦ Remets la procédure dans l’ordre.
+~ net stop spooler ;; del /q /f %SystemRoot%\System32\spool\PRINTERS\*.* ;; net start spooler
+x~ sc config spooler start= disabled ;; taskkill /im spoolsv.exe
+? Supprimer les fichiers pendant que le spouleur tourne échouerait : ils sont verrouillés.
+>>> type cmd ¦ Les files d’impression sont sur SRV-IMPRESSION. Vérifie l’état de son spouleur à distance.
+= sc \\SRV-IMPRESSION query spooler ;; sc \\srv-impression query spooler ;; sc \\SRV-IMPRESSION query Spooler ;; sc.exe \\SRV-IMPRESSION query spooler
+>>> type ps ¦ L’imprimante elle-même répond-elle ? Teste le port d’impression brute 9100 de IMP-RECEP.
+= Test-NetConnection IMP-RECEP -Port 9100 ;; tnc IMP-RECEP -Port 9100 ;; Test-NetConnection -ComputerName IMP-RECEP -Port 9100
+? `TcpTestSucceeded : True` : l’imprimante est joignable et accepte les impressions. Le problème était bien la file d’attente.
+>>> info ¦ Clôture
+```out
+Cause : travail « Facture_Chambre_214.pdf » en erreur bloquant la file IMP-RECEP.
+Action : Remove-PrintJob ID 12 ; test port 9100 OK ; impression de test réussie.
+Prévention : mise à jour du pilote d’IMP-RECEP planifiée (le PDF provoquait l’erreur).
+```
+
+### MISSION m7 ¦ Mettre en place la sauvegarde nocturne ¦ 3 ¦ Comprendre /MIR, lire un journal robocopy, planifier en SYSTEM.
+@ticket REQ-3340 ¦ P3 — Normale ¦ Informatique ¦ Lucas Bernard ¦ Fiabiliser la sauvegarde de C:\Data et vérifier l’erreur de cette nuit
+>>> info ¦ Le script existant
+```script cmd C:\Scripts\sauvegarde.bat
+@echo off
+set SOURCE=C:\Data
+set DEST=D:\Backup
+set LOG=C:\Logs\backup_%DATE:~6,4%-%DATE:~3,2%-%DATE:~0,2%.log
+
+robocopy "%SOURCE%" "%DEST%" /MIR /R:2 /W:5 /NP /LOG+:"%LOG%"
+
+if %ERRORLEVEL% GEQ 8 (
+    echo ECHEC de la sauvegarde, code %ERRORLEVEL%
+    exit /b 1
+)
+exit /b 0
+```
+>>> qcm ¦ Que fait `/MIR` si un utilisateur supprime par erreur un fichier dans C:\Data ?
++ Le fichier est aussi supprimé de D:\Backup à la sauvegarde suivante
+* Le fichier est conservé dans D:\Backup
+* robocopy restaure le fichier dans C:\Data
+* robocopy s’arrête avec une erreur
+? `/MIR` (**MIR**ror) rend la destination **identique** à la source, suppressions comprises. C’est une copie miroir, pas une vraie sauvegarde avec historique.
+>>> info ¦ Miroir ≠ sauvegarde
+Une vraie sauvegarde garde **plusieurs versions** dans le temps et une copie **hors site** ou hors ligne (règle **3-2-1** : 3 copies, 2 supports, 1 hors site). Le miroir robocopy protège d’une panne de disque, pas d’une suppression ni d’un chiffrement malveillant.
+!it Chez Contoso, ce miroir complète Veeam Agent (déjà installé), qui garde 30 points de restauration sur le NAS.
+>>> type cmd ¦ Cherche les erreurs dans le journal de la nuit dernière.
+= findstr /i erreur C:\Logs\backup_2026-10-07.log ;; findstr /i "erreur" C:\Logs\backup_2026-10-07.log ;; find /i "erreur" C:\Logs\backup_2026-10-07.log ;; findstr ERREUR C:\Logs\backup_2026-10-07.log ;; findstr "ERREUR" C:\Logs\backup_2026-10-07.log ;; find "ERREUR" C:\Logs\backup_2026-10-07.log
+```out
+2026/10/07 22:00:04 ERREUR 32 (0x00000020) Copie du fichier C:\Data\RH\planning_octobre.xlsx
+```
+>>> qcm ¦ « ERREUR 32 » signifie « Le processus ne peut pas accéder au fichier car ce fichier est utilisé par un autre processus ». Explication probable ?
++ Le fichier Excel était encore ouvert sur un poste à 22 h
+* Le disque D: est plein
+* Le fichier est corrompu
+* robocopy n’a pas les droits
+? Un fichier ouvert est verrouillé. Solutions : rappeler aux équipes de fermer leurs fichiers, ou utiliser une solution qui s’appuie sur les clichés instantanés (VSS), comme Veeam.
+>>> fill cmd ¦ Planifie le script chaque soir à 22 h avec le compte SYSTEM et les privilèges les plus élevés.
+```code cmd
+schtasks /create /tn "Sauvegarde Data" /tr "C:\Scripts\sauvegarde.bat" /sc ___ /st 22:00 /ru ___ /rl ___
+```
+= daily ;; SYSTEM ;; highest
+~ weekly ;; it.tech ;; admin ;; limited
+? SYSTEM : aucun mot de passe à gérer ni à faire expirer, et accès à tous les fichiers locaux.
+>>> type cmd ¦ Lance la tâche tout de suite pour la tester.
+= schtasks /run /tn "Sauvegarde Data" ;; schtasks /tn "Sauvegarde Data" /run
+>>> qcm ¦ Le lendemain, la tâche affiche « Dernier résultat : 0x1 ». Que signifie ce 1, compte tenu du script ?
++ Le script a fait `exit /b 1` : robocopy a renvoyé 8 ou plus, au moins un fichier n’a pas été copié
+* La tâche n’a pas pu démarrer
+* robocopy a copié 1 fichier
+* La sauvegarde a réussi
+? Le code de sortie du script remonte jusqu’au planificateur : c’est ce qui permet de **superviser** une tâche.
+
+### MISSION m8 ¦ « La nouvelle GPO ne s’applique pas » ¦ 3 ¦ gpresult, filtrage, OU, contrôleur, horloge : la méthode complète.
+@ticket INC-2085 ¦ P3 — Normale ¦ Réception ¦ Karim Benali ¦ Le fond d’écran et le verrouillage automatique ne sont pas appliqués sur PC-RECEP-01
+>>> info ¦ Le contexte
+Une nouvelle GPO, **GPO_Postes_Kiosque_Reception**, doit verrouiller automatiquement les postes de l’accueil après 5 minutes. Elle est liée à l’OU Postes. Rien ne change sur PC-RECEP-01.
+
+Checklist d’une GPO qui ne s’applique pas :
+- l’objet (ordinateur ou utilisateur) est-il dans une OU où la GPO est **liée** ?
+- la GPO est-elle **filtrée** (sécurité, WMI) ?
+- le poste **contacte-t-il** un contrôleur de domaine ?
+- les paramètres sont-ils côté **ordinateur** ou **utilisateur** ?
+>>> type cmd ¦ Sur le poste, force l’application des stratégies.
+= gpupdate /force
+>>> type cmd ¦ Affiche le résumé des stratégies appliquées à l’ordinateur.
+= gpresult /r /scope computer ;; gpresult /r /scope:computer ;; gpresult /scope computer /r ;; gpresult /scope:computer /r ;; gpresult /r
+```out
+    Les GPO suivants n’ont pas été appliqués car ils ont été filtrés
+    -------------------------------------------------------------------
+        GPO_Postes_Kiosque_Reception
+            Filtrage :  Refusé (filtrage de sécurité)
+```
+>>> qcm ¦ La GPO est « Refusée (filtrage de sécurité) ». Le filtrage de la GPO est réglé sur le groupe « GG_Postes_Reception ». Que vérifies-tu ?
++ Que le compte ordinateur PC-RECEP-01 est membre de GG_Postes_Reception
+* Que Karim est administrateur local
+* Que le pare-feu est désactivé
+* Que la GPO est liée au domaine
+? Pour une GPO **ordinateur**, c’est le **compte ordinateur** (PC-RECEP-01$) qui doit avoir le droit « Appliquer la stratégie de groupe ».
+>>> type ps ¦ Ajoute l’ordinateur PC-RECEP-01 au groupe GG_Postes_Reception.
+= Add-ADGroupMember GG_Postes_Reception -Members (Get-ADComputer PC-RECEP-01) ;; Add-ADGroupMember GG_Postes_Reception -Members PC-RECEP-01$ ;; Add-ADGroupMember -Identity GG_Postes_Reception -Members (Get-ADComputer PC-RECEP-01) ;; Add-ADGroupMember -Identity GG_Postes_Reception -Members PC-RECEP-01$ ;; Get-ADComputer PC-RECEP-01 | Add-ADPrincipalGroupMembership -MemberOf GG_Postes_Reception
+hint: Un compte ordinateur se désigne par `PC-RECEP-01$` (avec un dollar) ou par l’objet `Get-ADComputer PC-RECEP-01`.
+? Le SamAccountName d’un ordinateur se termine toujours par `$`.
+>>> qcm ¦ Le compte ordinateur vient d’être ajouté au groupe. `gpupdate /force` ne change toujours rien. Pourquoi ?
++ L’ordinateur ne connaît ses groupes qu’au démarrage : il faut redémarrer le poste
+* La GPO est cassée
+* Il faut attendre 24 heures
+* Il faut supprimer le poste du domaine
+? Comme un utilisateur avec sa session, un ordinateur obtient ses groupes (dans son ticket Kerberos) au **démarrage**. Redémarrage (ou `klist -li 0x3e7 purge` en administrateur, pour les plus aguerris).
+>>> info ¦ Les autres causes classiques
+```table
+Symptôme ¦ Vérification ¦ Commande
+Poste dans la mauvaise OU ¦ DN de l’ordinateur ¦ `Get-ADComputer PC-RECEP-01` (DistinguishedName)
+Héritage bloqué sur l’OU ¦ console GPMC ¦ `Get-GPInheritance -Target "OU=Postes,…"`
+Pas de contact avec un DC ¦ contrôleur trouvé ¦ `nltest /dsgetdc:contoso.local`, `echo %LOGONSERVER%`
+Horloge décalée ¦ écart > 5 min ¦ `w32tm /query /status`
+Canal sécurisé cassé ¦ relation d’approbation ¦ `nltest /sc_verify:contoso.local`
+Paramètre utilisateur dans une GPO liée aux ordinateurs ¦ section de la GPO ¦ `gpresult /h` (rapport)
+```
+>>> type cmd ¦ Génère un rapport HTML complet pour le joindre au ticket.
+= gpresult /h C:\Temp\gpo.html ;; gpresult /h C:\Temp\gpo.html /f ;; gpresult /h C:\Temp\rsop.html ;; gpresult /h C:\Temp\rsop.html /f ;; gpresult /h C:\Temp\gpresult.html /f ;; gpresult /h C:\Temp\gpresult.html
+
+### MISSION m9 ¦ « Mon PC est très lent » ¦ 2 ¦ Mesurer avant de supposer : processeur, mémoire, démarrage, disque.
+@ticket INC-2092 ¦ P3 — Normale ¦ Informatique ¦ IT Tech ¦ PC-IT-01 lent depuis l’installation du nouveau scanner
+>>> info ¦ Le contexte
+Ton propre poste rame depuis quelques jours, et le ventilateur tourne en permanence. Le seul changement récent : le logiciel fourni avec un ancien scanner prêté par la comptabilité.
+
+**Méthode** : on mesure **avant** de conclure. Processeur, mémoire, disque, programmes au démarrage, uptime.
+>>> type ps ¦ Affiche les 5 processus qui ont consommé le plus de temps processeur.
+= Get-Process | Sort-Object CPU -Descending | Select-Object -First 5 ;; gps | sort CPU -Descending | select -First 5 ;; Get-Process | Sort-Object -Property CPU -Descending | Select-Object -First 5 ;; Get-Process | sort CPU -Descending | select -First 5 ;; ps | sort CPU -Descending | select -First 5 ;; Get-Process | Sort-Object CPU -Descending | Select-Object -First 5 Name, Id, CPU
+```out
+
+Handles  NPM(K)    PM(K)      WS(K)     CPU(s)     Id  SI ProcessName
+-------  ------    -----      -----     ------     --  -- -----------
+   1450     117   162529     262144     1180,5   3104   0 MsMpEng
+    530      36    37379      60288      812,6   8920   1 ScanAssist
+   6234      12      987       1592      612,4      4   0 System
+   1510     173   249478     402384      522,4   5888   1 ms-teams
+```
+>>> qcm ¦ MsMpEng est en tête. Qu’est-ce que c’est ?
++ Le moteur de l’antivirus Microsoft Defender : normal qu’il travaille, surtout pendant une analyse
+* Un logiciel inconnu à supprimer d’urgence
+* Le processus du scanner
+* Un pilote d’imprimante
+? **M**icro**s**oft **M**alware **P**rotection **Eng**ine. Il ne faut surtout pas l’arrêter. Le second de la liste, en revanche, mérite qu’on s’y intéresse.
+>>> type ps ¦ Affiche le chemin de l’exécutable et l’éditeur du processus ScanAssist.
+= Get-Process ScanAssist | Select-Object Name, Path, Company ;; Get-Process -Name ScanAssist | Select-Object Name, Path, Company ;; Get-Process ScanAssist | Select-Object Path, Company ;; Get-Process ScanAssist | Format-List Name, Path, Company ;; Get-Process ScanAssist | Select-Object * ;; Get-Process ScanAssist | Format-List *
+```out
+
+Name       Path                                           Company
+----       ----                                           -------
+ScanAssist C:\Program Files (x86)\ScanAssist\ScanAssist.exe ScanAssist Ltd
+```
+>>> type cmd ¦ Vérifie si ce processus (PID 8920) a des connexions réseau.
+= netstat -ano | findstr 8920 ;; netstat -ano | find "8920" ;; netstat -ano | findstr "8920" ;; netstat -aon | findstr 8920 ;; netstat -nao | findstr 8920
+```out
+  TCP    192.168.10.42:50412    192.168.10.12:9100     SYN_SENT        8920
+```
+>>> qcm ¦ L’utilitaire tente sans cesse de joindre le port 9100 de 192.168.10.12 (SRV-IMPRESSION), sans réponse. Interprétation ?
++ Le logiciel cherche en boucle l’ancien scanner réseau, qui n’existe plus à cette adresse
+* Le poste est piraté
+* Le serveur d’impression est en panne
+* Le câble réseau est défectueux
+? `SYN_SENT` = tentative de connexion sans réponse. Un vieil utilitaire qui boucle sur une ressource disparue est une cause classique de processeur occupé.
+>>> type ps ¦ Liste les programmes lancés au démarrage du poste.
+= Get-CimInstance Win32_StartupCommand ;; Get-CimInstance Win32_StartupCommand | Select-Object Name, Command, Location ;; Get-CimInstance -ClassName Win32_StartupCommand ;; gcim Win32_StartupCommand ;; Get-WmiObject Win32_StartupCommand ;; Get-CimInstance Win32_StartupCommand | Select-Object Name, Command ;; Get-CimInstance Win32_StartupCommand | Format-Table Name, Command, Location
+? ScanAssist démarre à chaque ouverture de session (clé Run de ton profil). OneDrive, SecurityHealth et VeeamTray sont légitimes.
+>>> info ¦ Corriger proprement
+La comptabilité confirme que le scanner a été rendu. Le logiciel ne sert plus à rien :
+- arrêter le processus : `Stop-Process -Name ScanAssist -Force` ;
+- le **désinstaller** proprement (Paramètres → Applications, ou sa `UninstallString` dans la clé Uninstall), ce qui retire aussi son entrée de démarrage ;
+- à défaut, retirer l’entrée de démarrage : `Remove-ItemProperty HKCU:\Software\Microsoft\Windows\CurrentVersion\Run -Name ScanAssist`.
+!tip Préfère toujours la désinstallation officielle à la suppression manuelle : elle nettoie services, pilotes et tâches planifiées éventuels.
+>>> fill ps ¦ Retire uniquement l’entrée de démarrage de ScanAssist (en simulant d’abord).
+```code ps
+Remove-ItemProperty HKCU:\Software\Microsoft\Windows\CurrentVersion\Run -Name ___ ___
+```
+= ScanAssist ;; -WhatIf
+~ OneDrive ;; -Recurse ;; Run ;; -Force
+? Seule la valeur ScanAssist disparaît de la clé Run ; OneDrive et Teams restent au démarrage.
+>>> type ps ¦ Vérifie enfin depuis quand le poste n’a pas redémarré.
+= (Get-CimInstance Win32_OperatingSystem).LastBootUpTime ;; Get-CimInstance Win32_OperatingSystem | Select-Object LastBootUpTime ;; gcim Win32_OperatingSystem | Select-Object LastBootUpTime ;; (gcim Win32_OperatingSystem).LastBootUpTime
+? Un redémarrage hebdomadaire (et les mises à jour en attente) règle à lui seul bien des lenteurs.
+
+### MISSION m10 ¦ Redémarrer un poste sans déranger personne ¦ 2 ¦ Qui est connecté, prévenir, redémarrer à distance avec un délai.
+@ticket CHG-0418 ¦ P3 — Normale ¦ Comptabilité ¦ Jean Dupont ¦ Redémarrer PC-COMPTA-02 pour terminer l’installation des mises à jour
+>>> info ¦ Le contexte
+PC-COMPTA-02 attend un redémarrage pour finaliser ses mises à jour de sécurité. Avant de redémarrer un poste à distance, trois règles :
+- savoir **qui** est connecté ;
+- **prévenir** et laisser le temps d’enregistrer ;
+- garder la possibilité d’**annuler**.
+>>> type cmd ¦ Affiche les sessions ouvertes sur PC-COMPTA-02.
+= quser /server:PC-COMPTA-02 ;; query user /server:PC-COMPTA-02 ;; quser /server:pc-compta-02 ;; query user /server:pc-compta-02
+```out
+ UTILISATEUR           NOM DE SESSION     ID  ÉTAT    TEMPS INACT DATE OUVERTURE
+ jrobert               console             2  Actif           12  08/10/2026 08:05
+```
+>>> qcm ¦ La session de jrobert est « Actif » avec 12 minutes d’inactivité. Que fais-tu ?
++ Tu la préviens et lui laisses le temps d’enregistrer son travail
+* Tu redémarres immédiatement avec /f
+* Tu fermes sa session avec logoff
+* Tu attends qu’elle parte en congés
+? 12 minutes d’inactivité ne veulent pas dire qu’aucun document n’est ouvert.
+>>> type ps ¦ Vérifie aussi, via CIM en DCOM, quel utilisateur est connecté à la console (propriété UserName de Win32_ComputerSystem).
+= Get-CimInstance Win32_ComputerSystem -CimSession (New-CimSession -ComputerName PC-COMPTA-02 -SessionOption (New-CimSessionOption -Protocol Dcom)) | Select-Object UserName ;; Get-WmiObject Win32_ComputerSystem -ComputerName PC-COMPTA-02 | Select-Object UserName ;; (Get-WmiObject Win32_ComputerSystem -ComputerName PC-COMPTA-02).UserName ;; Get-CimInstance Win32_ComputerSystem -CimSession $s | Select-Object UserName ;; (Get-CimInstance Win32_ComputerSystem -CimSession $s).UserName
+hint: Le plus court en PowerShell 5.1 : `Get-WmiObject Win32_ComputerSystem -ComputerName PC-COMPTA-02 | Select-Object UserName` (DCOM).
+```out
+
+UserName
+--------
+CONTOSO\jrobert
+```
+>>> fill cmd ¦ Envoie un message à sa session (ID 2).
+```code cmd
+msg ___ /server:PC-COMPTA-02 "Mises à jour : votre PC redémarrera à 12h30. Merci d’enregistrer vos documents."
+```
+= 2
+~ jrobert@contoso.local ;; /all ;; console2 ;; *2
+? `msg` accepte l’ID de session, le nom d’utilisateur, ou `*` pour toutes les sessions.
+>>> order cmd ¦ Construis la commande qui redémarre PC-COMPTA-02 dans 15 minutes, avec un message.
+~ shutdown ;; /r ;; /m \\PC-COMPTA-02 ;; /t 900 ;; /c "Redémarrage pour mises à jour dans 15 minutes"
+x~ /s ;; /f ;; /a
+? 900 secondes = 15 minutes. Pas de `/f` : on laisse les applications proposer d’enregistrer.
+>>> qcm ¦ Julie appelle : elle termine une clôture comptable et a besoin de 30 minutes de plus. Que fais-tu ?
++ `shutdown /a /m \\PC-COMPTA-02`, puis tu reprogrammes plus tard
+* Tu laisses le redémarrage se faire
+* Tu fermes sa session pour aller plus vite
+* Tu lui dis de travailler sur un autre poste
+? `/a` (abort) annule pendant le délai. Le service rendu compte autant que la technique.
+>>> info ¦ Bilan des missions
+Tu as résolu dix tickets typiques d’un support en entreprise : réseau, comptes, stockage, arrivées, inventaire, impression, sauvegarde, GPO, performance et maintenance planifiée.
+
+Le fil rouge :
+- **mesurer avant de conclure** ;
+- **simuler avant d’agir** (`-WhatIf`, `/L`, `-Confirm`) ;
+- **prévenir** les utilisateurs ;
+- **documenter** cause, action, prévention.
+
+!tip Le **Terminal** du site reprend ces situations : rejoue-les librement, rien n’y est réel.

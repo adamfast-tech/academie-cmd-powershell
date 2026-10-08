@@ -1,0 +1,561 @@
+@@ ps Get-Help ¦ Découverte ¦ Affiche l’aide d’une commande ou d’un concept. ¦ [Get] [Help] : obtenir de l’aide
+alias: help, man
+syn: Get-Help [-Name] <string> [-Examples | -Detailed | -Full | -Online | -Parameter <string>]
+-Examples ¦ [EXAMPLES] ¦ Seulement les exemples.
+-Detailed ¦ [DETAILED] ¦ Description et paramètres.
+-Full ¦ [FULL] ¦ Tout.
+-Online ¦ [ONLINE] ¦ Ouvre la page web à jour.
+-Parameter ¦ [PARAMETER] ¦ Détail d’un paramètre (position, type, pipeline).
+ex: Get-Help Get-Process -Examples ¦ Le plus utile au quotidien.
+ex: Get-Help about_Comparison_Operators ¦ Article de fond.
+note: `Update-Help` (administrateur) télécharge l’aide complète.
+
+@@ ps Get-Command ¦ Découverte ¦ Liste les commandes disponibles. ¦ [Get] [Command]
+alias: gcm
+syn: Get-Command [[-Name] <string[]>] [-Verb <string>] [-Noun <string>] [-Module <string>]
+-Name ¦ [NAME] ¦ Nom ou motif (`*printer*`).
+-Verb ¦ [VERB] ¦ Filtre sur le verbe.
+-Noun ¦ [NOUN] ¦ Filtre sur le nom.
+-Module ¦ [MODULE] ¦ Commandes d’un module.
+ex: Get-Command *firewall* ¦ Trouver la bonne commande.
+ex: Get-Command -Verb Get -Noun *Disk* ¦ Toutes les lectures liées aux disques.
+
+@@ ps Get-Member ¦ Découverte ¦ Liste les propriétés et méthodes des objets reçus. ¦ [Get] [Member] : obtenir les membres
+alias: gm
+syn: <commande> | Get-Member [-MemberType Property|Method|...] [-Name <string>]
+-MemberType ¦ [MEMBER] [TYPE] ¦ `Property`, `Method`, `NoteProperty`, `ScriptProperty`…
+ex: Get-Service | Get-Member -MemberType Property ¦ Que contient un service ?
+
+@@ ps Get-Alias ¦ Découverte ¦ Affiche les alias (raccourcis). ¦ [Get] [Alias]
+alias: gal
+syn: Get-Alias [[-Name] <string>] [-Definition <string>]
+-Definition ¦ [DEFINITION] ¦ Alias d’une cmdlet donnée.
+ex: Get-Alias -Definition Get-ChildItem ¦ dir, gci, ls.
+
+@@ ps Get-ChildItem ¦ Fichiers ¦ Liste les éléments d’un emplacement (dossier, clé de registre…). ¦ [Get] [Child] [Item] : obtenir les éléments enfants
+alias: dir, ls, gci
+syn: Get-ChildItem [[-Path] <string[]>] [-Filter <string>] [-Include <string[]>] [-Exclude <string[]>] [-Recurse] [-Depth <uint32>] [-Force] [-File] [-Directory]
+-Path ¦ [PATH] ¦ Emplacement (position 0).
+-Filter ¦ [FILTER] ¦ Filtre rapide côté fournisseur (`*.log`).
+-Include ¦ [INCLUDE] ¦ Motifs à inclure (plusieurs possibles).
+-Exclude ¦ [EXCLUDE] ¦ Motifs à exclure.
+-Recurse ¦ [RECURSE] ¦ Sous-dossiers.
+-Depth ¦ [DEPTH] ¦ Profondeur maximale avec -Recurse.
+-Force ¦ [FORCE] ¦ Inclut cachés et système.
+-File ¦ [FILE] ¦ Seulement les fichiers.
+-Directory ¦ [DIRECTORY] ¦ Seulement les dossiers.
+ex: Get-ChildItem C:\Users -Filter *.pst -Recurse ¦ Chercher les archives Outlook.
+ex: Get-ChildItem C:\Logs | Sort-Object Length -Descending ¦ Les plus gros d’abord.
+ex: Get-ChildItem HKLM:\SOFTWARE ¦ Fonctionne aussi dans le Registre.
+
+@@ ps Set-Location ¦ Fichiers ¦ Change l’emplacement courant. ¦ [Set] [Location]
+alias: cd, sl, chdir
+syn: Set-Location [[-Path] <string>]
+ex: Set-Location C:\Logs ¦ Aller dans C:\Logs.
+ex: Set-Location HKLM:\SOFTWARE ¦ Entrer dans le Registre.
+see: `Push-Location`, `Pop-Location`
+
+@@ ps Get-Location ¦ Fichiers ¦ Affiche l’emplacement courant. ¦ [Get] [Location]
+alias: pwd, gl
+ex: (Get-Location).Path ¦ Le chemin seul.
+
+@@ ps New-Item ¦ Fichiers ¦ Crée un fichier, un dossier, une clé de registre. ¦ [New] [Item]
+alias: ni
+syn: New-Item [-Path] <string> [-ItemType File|Directory|SymbolicLink] [-Value <object>] [-Force]
+-ItemType ¦ [ITEM] [TYPE] ¦ `File`, `Directory`, `SymbolicLink`, `Junction`.
+-Value ¦ [VALUE] ¦ Contenu initial du fichier.
+-Force ¦ [FORCE] ¦ Écrase ou crée les dossiers parents.
+ex: New-Item C:\Temp\Audit -ItemType Directory ¦ Créer un dossier.
+ex: New-Item C:\Temp\note.txt -ItemType File -Value 'Bonjour' ¦ Créer un fichier.
+
+@@ ps Copy-Item ¦ Fichiers ¦ Copie des fichiers ou dossiers. ¦ [Copy] [Item]
+alias: copy, cp, cpi
+syn: Copy-Item [-Path] <string[]> [[-Destination] <string>] [-Recurse] [-Force] [-Filter <string>]
+-Destination ¦ [DESTINATION] ¦ Cible (position 1).
+-Recurse ¦ [RECURSE] ¦ Obligatoire pour copier le contenu d’un dossier.
+-Force ¦ [FORCE] ¦ Écrase les fichiers en lecture seule.
+ex: Copy-Item C:\Data\RH D:\Backup -Recurse ¦ Copier un dossier complet.
+ex: Copy-Item C:\Tools\outil.msi \\PC-COMPTA-02\C$\Temp\ ¦ Vers un poste via le partage d’administration.
+
+@@ ps Move-Item ¦ Fichiers ¦ Déplace des éléments. ¦ [Move] [Item]
+alias: move, mv, mi
+ex: Move-Item C:\Temp\*.pdf D:\Archives\ ¦ Déplacer des PDF.
+
+@@ ps Rename-Item ¦ Fichiers ¦ Renomme un élément. ¦ [Rename] [Item]
+alias: ren, rni
+syn: Rename-Item [-Path] <string> [-NewName] <string>
+ex: Rename-Item C:\Temp\a.txt b.txt ¦ Nouveau nom sans chemin.
+ex: Get-ChildItem *.log | Rename-Item -NewName { $_.Name -replace '\.log$','.old' } ¦ En masse.
+
+@@ ps Remove-Item ¦ Fichiers ¦ Supprime des fichiers, dossiers, clés de registre. ¦ [Remove] [Item]
+alias: del, rm, rd, ri, erase, rmdir
+syn: Remove-Item [-Path] <string[]> [-Recurse] [-Force] [-WhatIf] [-Confirm]
+-Recurse ¦ [RECURSE] ¦ Supprime le contenu des dossiers.
+-Force ¦ [FORCE] ¦ Cachés et lecture seule compris.
+-WhatIf ¦ [WHAT] [IF] ¦ Simulation.
+ex: Remove-Item C:\Temp\Audit -Recurse -WhatIf ¦ Toujours simuler d’abord.
+note: Pas de corbeille.
+
+@@ ps Get-Content ¦ Texte ¦ Lit le contenu d’un fichier (une ligne par élément). ¦ [Get] [Content]
+alias: gc, cat, type
+syn: Get-Content [-Path] <string[]> [-Tail <int>] [-TotalCount <int>] [-Wait] [-Raw] [-Encoding <enc>]
+-Tail ¦ [TAIL] : queue ¦ Les N dernières lignes (alias `-Last`).
+-TotalCount ¦ [TOTAL] [COUNT] ¦ Les N premières lignes (alias `-First`, `-Head`).
+-Wait ¦ [WAIT] ¦ Suit le fichier en direct.
+-Raw ¦ [RAW] : brut ¦ Tout le texte en une seule chaîne.
+ex: Get-Content C:\Logs\app.log -Tail 20 -Wait ¦ Surveiller un journal.
+
+@@ ps Set-Content ¦ Texte ¦ Remplace le contenu d’un fichier. ¦ [Set] [Content]
+alias: sc
+ex: Set-Content C:\Temp\postes.txt 'PC-COMPTA-01','PC-RH-01' ¦ Une ligne par valeur.
+note: Piège : `sc` est cet alias dans PowerShell 5.1. Pour le gestionnaire de services : `sc.exe`.
+
+@@ ps Add-Content ¦ Texte ¦ Ajoute à la fin d’un fichier. ¦ [Add] [Content]
+alias: ac
+ex: Add-Content C:\Logs\script.log "$(Get-Date -Format s) Début" ¦ Journal maison.
+
+@@ ps Select-String ¦ Texte ¦ Cherche du texte (expression régulière) dans des fichiers ou des chaînes. ¦ [Select] [String] : sélectionner du texte
+alias: sls
+syn: Select-String [-Pattern] <string[]> [-Path] <string[]> [-SimpleMatch] [-CaseSensitive] [-NotMatch] [-Context <int>]
+-Pattern ¦ [PATTERN] : motif ¦ Expression régulière.
+-SimpleMatch ¦ [SIMPLE] [MATCH] ¦ Texte littéral.
+-CaseSensitive ¦ [CASE] [SENSITIVE] ¦ Respecte la casse.
+-NotMatch ¦ [NOT] [MATCH] ¦ Lignes sans correspondance.
+-Context ¦ [CONTEXT] ¦ Lignes avant/après.
+ex: Select-String -Path C:\Logs\*.log -Pattern 'ERREUR' ¦ Le findstr de PowerShell.
+
+@@ ps Test-Path ¦ Fichiers ¦ Teste l’existence d’un chemin (True/False). ¦ [Test] [Path]
+syn: Test-Path [-Path] <string[]> [-PathType Leaf|Container] [-OlderThan <date>]
+-PathType ¦ [PATH] [TYPE] ¦ `Leaf` fichier, `Container` dossier.
+ex: if (Test-Path D:\Backup) { 'Disque présent' } ¦ Dans une condition.
+
+@@ ps Get-Acl ¦ Fichiers ¦ Lit les permissions NTFS (ou du Registre). ¦ [Get] [A]ccess [C]ontrol [L]ist
+ex: (Get-Acl D:\Partages\Compta).Access | Select-Object IdentityReference, FileSystemRights ¦ Qui a quels droits ?
+see: `icacls`
+
+@@ ps Get-FileHash ¦ Fichiers ¦ Calcule l’empreinte d’un fichier. ¦ [Get] [File] [Hash]
+syn: Get-FileHash [-Path] <string> [-Algorithm SHA256|SHA1|MD5]
+ex: Get-FileHash C:\Tools\installeur.msi ¦ SHA256 par défaut.
+
+@@ ps Compress-Archive ¦ Fichiers ¦ Crée une archive ZIP. ¦ [Compress] [Archive]
+syn: Compress-Archive -Path <string[]> -DestinationPath <string> [-Update]
+ex: Compress-Archive C:\Logs\*.log C:\Temp\journaux.zip ¦ Joindre des journaux à un ticket.
+see: `Expand-Archive`
+
+@@ ps Get-Process ¦ Processus & services ¦ Liste les processus. ¦ [Get] [Process]
+alias: ps, gps
+syn: Get-Process [[-Name] <string[]>] [-Id <int[]>] [-ComputerName <string[]>] [-IncludeUserName]
+-Name ¦ [NAME] ¦ Nom sans .exe (jokers).
+-Id ¦ [ID] ¦ PID.
+-IncludeUserName ¦ [INCLUDE] [USER] [NAME] ¦ Ajoute le propriétaire (administrateur).
+ex: Get-Process | Sort-Object CPU -Descending | Select-Object -First 5 ¦ Les plus gourmands.
+ex: Get-Process outlook | Select-Object Name, Id, Path, StartTime ¦ Détails.
+
+@@ ps Stop-Process ¦ Processus & services ¦ Arrête des processus. ¦ [Stop] [Process]
+alias: kill, spps
+syn: Stop-Process [-Id] <int[]> [-Force] | Stop-Process -Name <string[]> [-Force]
+-Id ¦ [ID] ¦ Positionnel.
+-Name ¦ [NAME] ¦ Par nom.
+-Force ¦ [FORCE] ¦ Sans confirmation.
+ex: Stop-Process -Name outlook -Force ¦ Fermer Outlook figé.
+
+@@ ps Start-Process ¦ Processus & services ¦ Lance un programme. ¦ [Start] [Process]
+alias: start, saps
+syn: Start-Process [-FilePath] <string> [[-ArgumentList] <string[]>] [-Verb RunAs] [-Wait]
+-Verb ¦ [VERB] ¦ `RunAs` : élévation (UAC).
+-Wait ¦ [WAIT] ¦ Attend la fin.
+-ArgumentList ¦ [ARGUMENT] [LIST] ¦ Arguments.
+ex: Start-Process powershell -Verb RunAs ¦ Ouvrir un PowerShell administrateur.
+ex: Start-Process msiexec -ArgumentList '/i C:\Tools\app.msi /qn' -Wait ¦ Installation silencieuse.
+
+@@ ps Get-Service ¦ Processus & services ¦ Liste les services et leur état. ¦ [Get] [Service]
+alias: gsv
+syn: Get-Service [[-Name] <string[]>] [-DisplayName <string[]>] [-ComputerName <string[]>] [-DependentServices]
+-Name ¦ [NAME] ¦ Nom court (jokers).
+-DisplayName ¦ [DISPLAY] [NAME] ¦ Nom affiché (`*impression*`).
+-ComputerName ¦ [COMPUTER] [NAME] ¦ Poste distant (5.1, via RPC, sans WinRM).
+-DependentServices ¦ [DEPENDENT] [SERVICES] ¦ Services qui en dépendent.
+ex: Get-Service | Where-Object { $_.StartType -eq 'Automatic' -and $_.Status -ne 'Running' } ¦ Services automatiques arrêtés.
+ex: Get-Service -ComputerName PC-COMPTA-02 -Name Spooler | Restart-Service ¦ À distance.
+
+@@ ps Restart-Service ¦ Processus & services ¦ Redémarre un service. ¦ [Restart] [Service]
+syn: Restart-Service [-Name] <string[]> [-Force]
+-Force ¦ [FORCE] ¦ Arrête aussi les services dépendants.
+ex: Restart-Service Spooler -Force ¦ Spouleur d’impression.
+see: `Start-Service`, `Stop-Service`
+
+@@ ps Set-Service ¦ Processus & services ¦ Modifie un service (démarrage, état). ¦ [Set] [Service]
+syn: Set-Service [-Name] <string> [-StartupType Automatic|Manual|Disabled] [-Status Running|Stopped]
+-StartupType ¦ [STARTUP] [TYPE] ¦ Type de démarrage.
+-Status ¦ [STATUS] ¦ Démarre ou arrête.
+ex: Set-Service wuauserv -StartupType Manual ¦ Démarrage manuel.
+
+@@ ps Where-Object ¦ Pipeline ¦ Filtre les objets du pipeline. ¦ [Where] [Object] : où l’objet…
+alias: where, ?
+syn: ... | Where-Object { condition avec $_ }
+syn: ... | Where-Object Propriété -opérateur valeur
+ex: Get-Service | Where-Object Status -eq 'Stopped' ¦ Syntaxe simplifiée.
+ex: Get-Process | Where-Object { $_.WS -gt 500MB } ¦ Bloc de script.
+note: Filtre à gauche : préférer le `-Filter` de la première commande quand il existe.
+
+@@ ps Select-Object ¦ Pipeline ¦ Choisit des propriétés, ou les N premiers/derniers objets. ¦ [Select] [Object]
+alias: select
+syn: ... | Select-Object [-Property] <object[]> [-First <int>] [-Last <int>] [-Unique] [-ExpandProperty <string>]
+-Property ¦ [PROPERTY] ¦ Propriétés, ou colonnes calculées `@{N='…';E={…}}`.
+-First ¦ [FIRST] ¦ Les N premiers.
+-Last ¦ [LAST] ¦ Les N derniers.
+-Unique ¦ [UNIQUE] ¦ Sans doublons.
+-ExpandProperty ¦ [EXPAND] [PROPERTY] ¦ Renvoie directement la valeur.
+ex: Get-Process | Select-Object Name, @{N='Mo';E={[math]::Round($_.WS/1MB)}} ¦ Colonne calculée.
+
+@@ ps Sort-Object ¦ Pipeline ¦ Trie les objets. ¦ [Sort] [Object]
+alias: sort
+syn: ... | Sort-Object [-Property] <object[]> [-Descending] [-Unique]
+-Descending ¦ [DESCENDING] ¦ Décroissant.
+-Unique ¦ [UNIQUE] ¦ Sans doublons.
+ex: Get-ChildItem C:\Logs | Sort-Object LastWriteTime -Descending ¦ Plus récents d’abord.
+
+@@ ps Group-Object ¦ Pipeline ¦ Regroupe les objets par valeur de propriété. ¦ [Group] [Object]
+alias: group
+syn: ... | Group-Object [-Property] <object[]> [-NoElement]
+-NoElement ¦ [NO] [ELEMENT] ¦ Sans la colonne Group.
+ex: Get-ADUser -Filter * -Properties Department | Group-Object Department -NoElement ¦ Effectif par service.
+
+@@ ps Measure-Object ¦ Pipeline ¦ Compte, additionne, calcule moyenne, min, max. ¦ [Measure] [Object]
+alias: measure
+syn: ... | Measure-Object [[-Property] <string>] [-Sum] [-Average] [-Maximum] [-Minimum] [-Line] [-Word]
+-Sum ¦ [SUM] ¦ Somme.
+-Average ¦ [AVERAGE] ¦ Moyenne.
+-Maximum ¦ [MAXIMUM] ¦ Maximum.
+-Minimum ¦ [MINIMUM] ¦ Minimum.
+ex: (Get-ChildItem D:\Partages -Recurse -File | Measure-Object Length -Sum).Sum / 1GB ¦ Taille totale en Go.
+
+@@ ps ForEach-Object ¦ Pipeline ¦ Exécute un bloc de code pour chaque objet du pipeline. ¦ [For] [Each] [Object] : pour chaque objet
+alias: %, foreach
+syn: ... | ForEach-Object { code avec $_ }
+ex: 'PC-COMPTA-01','PC-RH-01' | ForEach-Object { Test-Connection $_ -Count 1 -Quiet } ¦ Tester une liste.
+
+@@ ps Format-Table ¦ Affichage ¦ Affiche en tableau. ¦ [Format] [Table]
+alias: ft
+syn: ... | Format-Table [[-Property] <object[]>] [-AutoSize] [-Wrap] [-GroupBy <object>]
+-AutoSize ¦ [AUTO] [SIZE] ¦ Ajuste la largeur des colonnes.
+-Wrap ¦ [WRAP] ¦ Renvoie à la ligne au lieu de tronquer.
+ex: Get-Service | Format-Table Name, Status, StartType -AutoSize ¦ Lisible.
+note: Toujours en DERNIER : après Format-*, plus d’objets exploitables.
+
+@@ ps Format-List ¦ Affichage ¦ Affiche une propriété par ligne. ¦ [Format] [List]
+alias: fl
+ex: Get-Service Spooler | Format-List * ¦ Toutes les propriétés.
+
+@@ ps Out-GridView ¦ Affichage ¦ Fenêtre interactive triable et filtrable. ¦ [Out] [Grid] [View]
+alias: ogv
+syn: ... | Out-GridView [-PassThru] [-Title <string>]
+-PassThru ¦ [PASS] [THRU] ¦ Renvoie les lignes sélectionnées dans le pipeline.
+ex: Get-Process | Out-GridView -PassThru | Stop-Process ¦ Choisir à la souris quoi arrêter.
+
+@@ ps Out-File ¦ Affichage ¦ Écrit la sortie texte dans un fichier. ¦ [Out] [File]
+syn: ... | Out-File [-FilePath] <string> [-Append] [-Encoding <enc>]
+-Append ¦ [APPEND] ¦ Ajoute au lieu d’écraser.
+ex: ipconfig /all | Out-File C:\Temp\diag.txt ¦ Comme `>`.
+
+@@ ps Export-Csv ¦ Données ¦ Exporte des objets en CSV. ¦ [Export] [C]omma-[S]eparated [V]alues
+alias: epcsv
+syn: ... | Export-Csv [-Path] <string> [-NoTypeInformation] [-Delimiter <char>] [-UseCulture] [-Encoding <enc>] [-Append]
+-NoTypeInformation ¦ [NO] [TYPE] [INFORMATION] ¦ Supprime la ligne `#TYPE` (5.1).
+-Delimiter ¦ [DELIMITER] ¦ Séparateur : `';'` pour Excel français.
+-UseCulture ¦ [USE] [CULTURE] ¦ Séparateur des paramètres régionaux.
+-Encoding ¦ [ENCODING] ¦ `UTF8` pour garder les accents.
+-Append ¦ [APPEND] ¦ Ajoute à un CSV existant.
+ex: Get-ADUser -Filter * | Select-Object Name, SamAccountName | Export-Csv C:\Temp\u.csv -NoTypeInformation -Delimiter ';' -Encoding UTF8 ¦ Pour Excel.
+
+@@ ps Import-Csv ¦ Données ¦ Lit un CSV : une ligne = un objet. ¦ [Import] [CSV]
+alias: ipcsv
+syn: Import-Csv [-Path] <string> [-Delimiter <char>] [-UseCulture] [-Encoding <enc>] [-Header <string[]>]
+-Delimiter ¦ [DELIMITER] ¦ `';'` pour un CSV Excel français.
+-Header ¦ [HEADER] ¦ Noms de colonnes si le fichier n’en a pas.
+ex: Import-Csv C:\Data\nouveaux.csv -Delimiter ';' | ForEach-Object { $_.Prenom } ¦ Parcourir.
+
+@@ ps ConvertTo-Json ¦ Données ¦ Convertit des objets en JSON. ¦ [ConvertTo] [J]ava[S]cript [O]bject [N]otation
+syn: ... | ConvertTo-Json [-Depth <int>] [-Compress]
+-Depth ¦ [DEPTH] ¦ Profondeur (défaut 2 : augmenter pour des objets imbriqués).
+ex: Get-Service Spooler | Select-Object Name, Status | ConvertTo-Json ¦ Pour une API.
+see: `ConvertFrom-Json`
+
+@@ ps Get-Date ¦ Utilitaires ¦ Date et heure, formatage, calculs. ¦ [Get] [Date]
+syn: Get-Date [-Format <string>] [-Date <datetime>]
+-Format ¦ [FORMAT] ¦ `yyyy-MM-dd`, `HH:mm`, `s` (ISO)…
+ex: Get-Date -Format 'yyyy-MM-dd_HHmm' ¦ Pour un nom de fichier.
+ex: (Get-Date).AddDays(-90) ¦ Il y a 90 jours.
+note: `MM` = mois, `mm` = minutes, `HH` = heure 24 h.
+
+@@ ps Start-Sleep ¦ Utilitaires ¦ Met le script en pause. ¦ [Start] [Sleep]
+alias: sleep
+syn: Start-Sleep [-Seconds] <int> | -Milliseconds <int>
+ex: Start-Sleep -Seconds 30 ¦ Attendre un service.
+
+@@ ps Read-Host ¦ Utilitaires ¦ Demande une saisie à l’utilisateur. ¦ [Read] [Host]
+syn: Read-Host [[-Prompt] <string>] [-AsSecureString]
+-AsSecureString ¦ [AS] [SECURE] [STRING] ¦ Saisie masquée (mots de passe).
+ex: $mdp = Read-Host 'Mot de passe' -AsSecureString ¦ Pour Set-ADAccountPassword.
+
+@@ ps Write-Host ¦ Utilitaires ¦ Affiche du texte à l’écran (couleurs possibles). ¦ [Write] [Host]
+syn: Write-Host [[-Object] <object>] [-ForegroundColor <couleur>] [-NoNewline]
+-ForegroundColor ¦ [FOREGROUND] [COLOR] ¦ Couleur du texte.
+ex: Write-Host 'Terminé' -ForegroundColor Green ¦ Message coloré.
+note: N’envoie rien dans le pipeline : pour produire un résultat, écrire la valeur ou `Write-Output`.
+see: `Write-Output`, `Write-Warning`, `Write-Verbose`
+
+@@ ps Write-Warning ¦ Utilitaires ¦ Affiche un avertissement (jaune). ¦ [Write] [Warning]
+ex: Write-Warning "$poste injoignable" ¦ Sans arrêter le script.
+
+@@ ps Start-Transcript ¦ Scripts ¦ Enregistre toute la session dans un fichier. ¦ [Start] [Transcript] : transcription
+syn: Start-Transcript [-Path] <string> [-Append] | Stop-Transcript
+ex: Start-Transcript C:\Logs\intervention.log ¦ Trace de ce qui a été fait.
+
+@@ ps Get-ExecutionPolicy ¦ Scripts ¦ Affiche la stratégie d’exécution des scripts. ¦ [Get] [Execution] [Policy]
+syn: Get-ExecutionPolicy [-List] [-Scope <scope>]
+-List ¦ [LIST] ¦ Toutes les portées et leur valeur.
+ex: Get-ExecutionPolicy -List ¦ Qui impose quoi ?
+
+@@ ps Set-ExecutionPolicy ¦ Scripts ¦ Modifie la stratégie d’exécution. ¦ [Set] [Execution] [Policy]
+syn: Set-ExecutionPolicy [-ExecutionPolicy] Restricted|AllSigned|RemoteSigned|Unrestricted|Bypass [-Scope Process|CurrentUser|LocalMachine] [-Force]
+-Scope ¦ [SCOPE] : portée ¦ `Process` (fenêtre), `CurrentUser`, `LocalMachine` (administrateur).
+ex: Set-ExecutionPolicy RemoteSigned -Scope CurrentUser ¦ Scripts locaux autorisés pour soi.
+note: Une GPO (MachinePolicy/UserPolicy) l’emporte toujours.
+
+@@ ps Unblock-File ¦ Scripts ¦ Retire la marque « téléchargé depuis Internet ». ¦ [Unblock] [File]
+ex: Unblock-File C:\Scripts\outil.ps1 ¦ Après avoir relu le script.
+
+@@ ps Import-Module ¦ Scripts ¦ Charge un module. ¦ [Import] [Module]
+alias: ipmo
+syn: Import-Module [-Name] <string>
+ex: Import-Module ActiveDirectory ¦ Chargement explicite (automatique depuis PS 3).
+see: `Get-Module -ListAvailable`
+
+@@ ps Get-CimInstance ¦ Inventaire ¦ Interroge WMI/CIM (matériel, OS, logiciels). ¦ [Get] [C]ommon [I]nformation [M]odel [Instance]
+alias: gcim
+syn: Get-CimInstance [-ClassName] <string> [-Filter <wql>] [-ComputerName <string[]> | -CimSession <CimSession[]>] [-Property <string[]>]
+-ClassName ¦ [CLASS] [NAME] ¦ `Win32_BIOS`, `Win32_ComputerSystem`, `Win32_LogicalDisk`…
+-Filter ¦ [FILTER] ¦ Filtre WQL : `"DriveType=3"`.
+-CimSession ¦ [CIM] [SESSION] ¦ Session existante (DCOM pour se passer de WinRM).
+-ComputerName ¦ [COMPUTER] [NAME] ¦ Utilise WinRM (WS-Man) : échoue si WinRM n’est pas activé.
+ex: (Get-CimInstance Win32_BIOS).SerialNumber ¦ Numéro de série.
+ex: Get-CimInstance Win32_OperatingSystem | Select-Object Caption, LastBootUpTime ¦ OS et dernier démarrage.
+note: Éviter `Win32_Product` (lente, déclenche des vérifications MSI).
+
+@@ ps New-CimSession ¦ Inventaire ¦ Ouvre une connexion CIM réutilisable vers un poste. ¦ [New] [CIM] [Session]
+syn: New-CimSession [-ComputerName] <string[]> [-SessionOption <CimSessionOptions>] [-Credential <pscredential>]
+-SessionOption ¦ [SESSION] [OPTION] ¦ `(New-CimSessionOption -Protocol Dcom)` pour passer par RPC.
+ex: $s = New-CimSession -ComputerName PC-COMPTA-02 -SessionOption (New-CimSessionOption -Protocol Dcom) ¦ Sans WinRM.
+see: `Remove-CimSession`
+
+@@ ps Get-WmiObject ¦ Inventaire ¦ Ancienne cmdlet WMI (5.1 uniquement), en DCOM. ¦ [Get] [W]indows [M]anagement [I]nstrumentation [Object]
+alias: gwmi
+syn: Get-WmiObject [-Class] <string> [-ComputerName <string[]>] [-Filter <wql>]
+ex: Get-WmiObject Win32_ComputerSystem -ComputerName PC-COMPTA-02 | Select-Object UserName ¦ Utilisateur connecté, sans WinRM.
+note: Absente de PowerShell 7 : préférer Get-CimInstance + session DCOM pour les nouveaux scripts.
+
+@@ ps Get-WinEvent ¦ Journaux ¦ Lit les journaux d’événements. ¦ [Get] [Win]dows [Event]
+syn: Get-WinEvent -FilterHashtable @{LogName=…; Id=…; Level=…; StartTime=…} [-MaxEvents <int>] [-ComputerName <string>]
+-FilterHashtable ¦ [FILTER] [HASH] [TABLE] ¦ Filtre côté service (rapide).
+-MaxEvents ¦ [MAX] [EVENTS] ¦ Les N plus récents.
+-ComputerName ¦ [COMPUTER] [NAME] ¦ Poste distant (RPC, sans WinRM).
+-LogName ¦ [LOG] [NAME] ¦ Journal entier (lent sans filtre).
+ex: Get-WinEvent -FilterHashtable @{LogName='System'; Id=41,6008} -MaxEvents 5 ¦ Arrêts brutaux.
+ex: Get-WinEvent -ComputerName SRV-AD01 -FilterHashtable @{LogName='Security'; Id=4740} ¦ Verrouillages de comptes.
+note: Niveaux : 1 critique, 2 erreur, 3 avertissement, 4 information.
+
+@@ ps Get-HotFix ¦ Inventaire ¦ Liste les correctifs Windows installés. ¦ [Get] [Hot] [Fix] : correctif à chaud
+syn: Get-HotFix [[-Id] <string[]>] [-ComputerName <string[]>]
+ex: Get-HotFix | Sort-Object InstalledOn -Descending | Select-Object -First 5 ¦ Derniers correctifs.
+
+@@ ps Get-ComputerInfo ¦ Inventaire ¦ Fiche complète du poste (comme systeminfo, en objet). ¦ [Get] [Computer] [Info]
+syn: Get-ComputerInfo [[-Property] <string[]>]
+ex: Get-ComputerInfo -Property OsName, CsModel, BiosSeralNumber ¦ Attention : la propriété s’écrit vraiment « BiosSeralNumber » (faute d’origine).
+
+@@ ps Restart-Computer ¦ Système ¦ Redémarre un ordinateur local ou distant. ¦ [Restart] [Computer]
+syn: Restart-Computer [[-ComputerName] <string[]>] [-Force] [-Wait] [-For PowerShell|WinRM|Wmi]
+-Force ¦ [FORCE] ¦ Même si des utilisateurs sont connectés.
+-Wait ¦ [WAIT] ¦ Attend le retour du poste.
+ex: Restart-Computer -ComputerName PC-COMPTA-02 -Force ¦ En 5.1, passe par WMI (DCOM).
+note: Préférer `shutdown /r /m \\PC /t … /c "…"` pour prévenir l’utilisateur.
+
+@@ ps Test-Connection ¦ Réseau ¦ Ping en objets. ¦ [Test] [Connection]
+syn: Test-Connection [-ComputerName] <string[]> [-Count <int>] [-Quiet]
+-Count ¦ [COUNT] ¦ Nombre de requêtes.
+-Quiet ¦ [QUIET] ¦ Renvoie seulement True/False.
+ex: if (Test-Connection SRV-AD01 -Count 1 -Quiet) { 'OK' } ¦ Dans une condition.
+
+@@ ps Test-NetConnection ¦ Réseau ¦ Teste un port TCP, ou un ping et une route. ¦ [Test] [Net]work [Connection]
+alias: tnc
+syn: Test-NetConnection [[-ComputerName] <string>] [-Port <int> | -CommonTCPPort HTTP|RDP|SMB|WINRM] [-TraceRoute] [-InformationLevel Quiet|Detailed]
+-Port ¦ [PORT] ¦ Port TCP à tester.
+-CommonTCPPort ¦ [COMMON] [TCP] [PORT] ¦ Raccourci pour les ports courants.
+-TraceRoute ¦ [TRACE] [ROUTE] ¦ Comme tracert.
+-InformationLevel ¦ [INFORMATION] [LEVEL] ¦ `Quiet` = True/False.
+ex: Test-NetConnection SRV-FICHIERS -Port 445 ¦ Le partage de fichiers répond-il ?
+
+@@ ps Resolve-DnsName ¦ Réseau ¦ Résolution DNS détaillée. ¦ [Resolve] [DNS] [Name]
+syn: Resolve-DnsName [-Name] <string> [[-Type] A|AAAA|MX|SRV|TXT|PTR|NS] [-Server <string>]
+-Type ¦ [TYPE] ¦ Type d’enregistrement.
+-Server ¦ [SERVER] ¦ Serveur DNS à interroger.
+ex: Resolve-DnsName contoso-hotels.com -Type MX ¦ Serveurs de messagerie.
+
+@@ ps Get-NetIPConfiguration ¦ Réseau ¦ Configuration IP en objets. ¦ [Get] [Net]work [IP] [Configuration]
+alias: gip
+syn: Get-NetIPConfiguration [-Detailed]
+ex: Get-NetIPConfiguration | Select-Object InterfaceAlias, IPv4Address, IPv4DefaultGateway, DNSServer ¦ L’essentiel.
+
+@@ ps Get-NetTCPConnection ¦ Réseau ¦ Connexions TCP (le netstat de PowerShell). ¦ [Get] [Net]work [TCP] [Connection]
+syn: Get-NetTCPConnection [-LocalPort <int>] [-RemotePort <int>] [-State Listen|Established|...]
+-State ¦ [STATE] ¦ État de la connexion.
+-LocalPort ¦ [LOCAL] [PORT] ¦ Port local.
+ex: Get-NetTCPConnection -State Listen | Sort-Object LocalPort ¦ Ports en écoute.
+
+@@ ps Clear-DnsClientCache ¦ Réseau ¦ Vide le cache DNS du poste. ¦ [Clear] [DNS] [Client] [Cache]
+ex: Clear-DnsClientCache ¦ = ipconfig /flushdns.
+
+@@ ps Get-ItemProperty ¦ Registre ¦ Lit les valeurs d’une clé de registre (ou les propriétés d’un fichier). ¦ [Get] [Item] [Property]
+alias: gp
+syn: Get-ItemProperty [-Path] <string[]> [[-Name] <string[]>]
+ex: Get-ItemProperty HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\* | Select-Object DisplayName, DisplayVersion ¦ Logiciels installés.
+see: `Get-ItemPropertyValue`
+
+@@ ps Set-ItemProperty ¦ Registre ¦ Modifie une valeur de registre. ¦ [Set] [Item] [Property]
+alias: sp
+syn: Set-ItemProperty [-Path] <string> [-Name] <string> [-Value] <object>
+ex: Set-ItemProperty 'HKLM:\SYSTEM\CurrentControlSet\Control\Terminal Server' -Name fDenyTSConnections -Value 0 ¦ Autoriser le RDP.
+
+@@ ps New-ItemProperty ¦ Registre ¦ Crée une valeur de registre typée. ¦ [New] [Item] [Property]
+syn: New-ItemProperty [-Path] <string> [-Name] <string> -Value <object> -PropertyType String|ExpandString|MultiString|DWord|QWord|Binary [-Force]
+-PropertyType ¦ [PROPERTY] [TYPE] ¦ Type de la valeur (DWord = REG_DWORD…).
+ex: New-ItemProperty HKCU:\Software\Contoso -Name Site -Value 'Nice' -PropertyType String ¦ Créer une valeur texte.
+
+@@ ps Remove-ItemProperty ¦ Registre ¦ Supprime une valeur de registre. ¦ [Remove] [Item] [Property]
+syn: Remove-ItemProperty [-Path] <string> [-Name] <string[]> [-WhatIf]
+ex: Remove-ItemProperty HKCU:\Software\Microsoft\Windows\CurrentVersion\Run -Name ScanAssist -WhatIf ¦ Retirer un programme du démarrage.
+note: `Remove-Item` supprimerait la clé entière.
+
+@@ ps Get-ADUser ¦ Active Directory ¦ Lit des comptes utilisateurs AD. ¦ [Get] [A]ctive [D]irectory [User]
+syn: Get-ADUser [-Identity] <sam|DN|SID|GUID> [-Properties <string[]>]
+syn: Get-ADUser -Filter <string> [-SearchBase <DN>] [-SearchScope Base|OneLevel|Subtree] [-Properties <string[]>]
+-Identity ¦ [IDENTITY] ¦ Un compte précis (login, DN, SID, GUID ; pas le nom complet).
+-Filter ¦ [FILTER] ¦ Recherche : `"Department -eq 'RH'"`, `*`.
+-Properties ¦ [PROPERTIES] ¦ Attributs supplémentaires (`*` = tous).
+-SearchBase ¦ [SEARCH] [BASE] ¦ Limite à une OU.
+-SearchScope ¦ [SEARCH] [SCOPE] ¦ Profondeur de recherche.
+ex: Get-ADUser mlefevre -Properties LockedOut, PasswordLastSet ¦ État d’un compte.
+ex: Get-ADUser -Filter "Name -like 'Jul*'" ¦ Recherche par nom.
+
+@@ ps Set-ADUser ¦ Active Directory ¦ Modifie un compte utilisateur. ¦ [Set] [AD] [User]
+syn: Set-ADUser [-Identity] <ADUser> [-Department <string>] [-Title <string>] [-Description <string>] [-ChangePasswordAtLogon <bool>] [-Enabled <bool>] [-Replace @{…}]
+-ChangePasswordAtLogon ¦ [CHANGE] [PASSWORD] [AT] [LOGON] ¦ Forcer le changement à la prochaine connexion.
+-Replace ¦ [REPLACE] ¦ Remplace des attributs LDAP bruts.
+ex: Set-ADUser eroux -ChangePasswordAtLogon $true ¦ Après une réinitialisation.
+
+@@ ps New-ADUser ¦ Active Directory ¦ Crée un compte utilisateur. ¦ [New] [AD] [User]
+syn: New-ADUser [-Name] <string> -SamAccountName <string> [-UserPrincipalName <string>] [-GivenName] [-Surname] [-Path <DN>] [-AccountPassword <SecureString>] [-Enabled <bool>] [-ChangePasswordAtLogon <bool>]
+-Path ¦ [PATH] ¦ DN de l’OU de destination.
+-AccountPassword ¦ [ACCOUNT] [PASSWORD] ¦ SecureString.
+-Enabled ¦ [ENABLED] ¦ `$true`, sinon le compte est créé désactivé.
+ex: New-ADUser -Name 'Léa Durand' -SamAccountName ldurand -Path 'OU=Reception,OU=Utilisateurs,DC=contoso,DC=local' -WhatIf ¦ Simulation.
+
+@@ ps Search-ADAccount ¦ Active Directory ¦ Trouve les comptes verrouillés, inactifs, expirés, désactivés. ¦ [Search] [AD] [Account]
+syn: Search-ADAccount {-LockedOut | -AccountDisabled | -AccountExpired | -PasswordExpired | -PasswordNeverExpires | -AccountInactive [-TimeSpan <timespan>]} [-UsersOnly | -ComputersOnly]
+-LockedOut ¦ [LOCKED] [OUT] ¦ Comptes verrouillés.
+-AccountInactive ¦ [ACCOUNT] [INACTIVE] ¦ Sans connexion depuis `-TimeSpan` (ex. `90.00:00:00`).
+-AccountDisabled ¦ [ACCOUNT] [DISABLED] ¦ Désactivés.
+-PasswordExpired ¦ [PASSWORD] [EXPIRED] ¦ Mot de passe expiré.
+-UsersOnly ¦ [USERS] [ONLY] ¦ Seulement les utilisateurs.
+-ComputersOnly ¦ [COMPUTERS] [ONLY] ¦ Seulement les ordinateurs.
+ex: Search-ADAccount -LockedOut ¦ Le réflexe du matin.
+
+@@ ps Unlock-ADAccount ¦ Active Directory ¦ Déverrouille un compte. ¦ [Unlock] [AD] [Account]
+syn: Unlock-ADAccount [-Identity] <ADAccount>
+ex: Unlock-ADAccount mlefevre ¦ Aucun message = succès.
+
+@@ ps Set-ADAccountPassword ¦ Active Directory ¦ Change ou réinitialise un mot de passe. ¦ [Set] [AD] [Account] [Password]
+syn: Set-ADAccountPassword [-Identity] <ADAccount> -Reset -NewPassword <SecureString>
+-Reset ¦ [RESET] ¦ Réinitialisation par un administrateur.
+-NewPassword ¦ [NEW] [PASSWORD] ¦ SecureString obligatoire.
+ex: Set-ADAccountPassword mlefevre -Reset -NewPassword (Read-Host -AsSecureString 'Nouveau') ¦ Saisie masquée.
+
+@@ ps Disable-ADAccount ¦ Active Directory ¦ Désactive un compte. ¦ [Disable] [AD] [Account]
+syn: Disable-ADAccount [-Identity] <ADAccount> [-WhatIf]
+ex: Disable-ADAccount cmoreau ¦ Départ d’un collaborateur.
+see: `Enable-ADAccount`
+
+@@ ps Get-ADGroupMember ¦ Active Directory ¦ Liste les membres d’un groupe. ¦ [Get] [AD] [Group] [Member]
+syn: Get-ADGroupMember [-Identity] <ADGroup> [-Recursive]
+-Recursive ¦ [RECURSIVE] ¦ Développe les groupes imbriqués.
+ex: Get-ADGroupMember DL_Partage_Compta_RW -Recursive ¦ Qui a vraiment accès ?
+
+@@ ps Add-ADGroupMember ¦ Active Directory ¦ Ajoute des membres à un groupe. ¦ [Add] [AD] [Group] [Member]
+syn: Add-ADGroupMember [-Identity] <ADGroup> [-Members] <ADPrincipal[]>
+ex: Add-ADGroupMember GG_Compta -Members mfaure ¦ Nouvel arrivant.
+see: `Remove-ADGroupMember`, `Add-ADPrincipalGroupMembership`
+
+@@ ps Get-ADPrincipalGroupMembership ¦ Active Directory ¦ Groupes dont un compte est membre. ¦ [Get] [AD] [Principal] [Group] [Membership]
+syn: Get-ADPrincipalGroupMembership [-Identity] <ADPrincipal>
+ex: Get-ADPrincipalGroupMembership jdupont | Select-Object Name ¦ Ses groupes.
+
+@@ ps Get-ADComputer ¦ Active Directory ¦ Lit des comptes ordinateurs AD. ¦ [Get] [AD] [Computer]
+syn: Get-ADComputer [-Identity] <ADComputer> | -Filter <string> [-SearchBase <DN>] [-Properties <string[]>]
+ex: Get-ADComputer -Filter * -Properties OperatingSystem, LastLogonDate | Sort-Object LastLogonDate ¦ Parc et activité.
+
+@@ ps Move-ADObject ¦ Active Directory ¦ Déplace un objet vers une autre OU. ¦ [Move] [AD] [Object]
+syn: Move-ADObject [-Identity] <ADObject> -TargetPath <DN>
+-TargetPath ¦ [TARGET] [PATH] ¦ DN complet de l’OU de destination.
+ex: Get-ADUser cmoreau | Move-ADObject -TargetPath 'OU=Desactives,DC=contoso,DC=local' ¦ Ranger un compte désactivé.
+
+@@ ps Get-ADDomain ¦ Active Directory ¦ Informations sur le domaine (rôles FSMO, niveau fonctionnel…). ¦ [Get] [AD] [Domain]
+ex: (Get-ADDomain).PDCEmulator ¦ Où chercher les verrouillages (4740).
+
+@@ ps Test-ComputerSecureChannel ¦ Active Directory ¦ Vérifie/répare la relation poste ↔ domaine. ¦ [Test] [Computer] [Secure] [Channel]
+syn: Test-ComputerSecureChannel [-Repair] [-Credential <pscredential>]
+-Repair ¦ [REPAIR] ¦ Resynchronise le mot de passe du compte ordinateur.
+ex: Test-ComputerSecureChannel -Repair -Credential CONTOSO\it.tech ¦ « Relation d’approbation » cassée.
+
+@@ ps Get-Printer ¦ Impression ¦ Liste les imprimantes. ¦ [Get] [Printer]
+syn: Get-Printer [[-Name] <string[]>] [-ComputerName <string>]
+ex: Get-Printer -ComputerName SRV-IMPRESSION ¦ Imprimantes d’un serveur.
+
+@@ ps Get-PrintJob ¦ Impression ¦ Liste les travaux d’une file d’attente. ¦ [Get] [Print] [Job]
+syn: Get-PrintJob [-PrinterName] <string> [-ComputerName <string>]
+ex: Get-PrintJob -PrinterName IMP-RECEP ¦ Que bloque la file ?
+see: `Remove-PrintJob`
+
+@@ ps Remove-PrintJob ¦ Impression ¦ Supprime un travail d’impression. ¦ [Remove] [Print] [Job]
+syn: Remove-PrintJob [-PrinterName] <string> -ID <uint32> | <PrintJob> | Remove-PrintJob
+ex: Get-PrintJob IMP-RECEP | Where-Object JobStatus -like '*Error*' | Remove-PrintJob ¦ Retirer les travaux en erreur.
+
+@@ ps Get-ScheduledTask ¦ Système ¦ Liste les tâches planifiées. ¦ [Get] [Scheduled] [Task]
+syn: Get-ScheduledTask [[-TaskName] <string[]>] [-TaskPath <string>]
+ex: Get-ScheduledTask | Where-Object State -eq 'Ready' | Select-Object TaskName, TaskPath ¦ Tâches actives.
+see: `Get-ScheduledTaskInfo`, `schtasks`
+
+@@ ps Get-LocalGroupMember ¦ Système ¦ Membres d’un groupe local du poste. ¦ [Get] [Local] [Group] [Member]
+syn: Get-LocalGroupMember [-Group] <string>
+ex: Get-LocalGroupMember Administrateurs ¦ Qui est admin du poste ?
+
+@@ ps Get-Volume ¦ Disque ¦ Volumes, espace libre, système de fichiers. ¦ [Get] [Volume]
+syn: Get-Volume [[-DriveLetter] <char[]>]
+ex: Get-Volume C ¦ Espace libre de C:.
+
+@@ ps Invoke-WebRequest ¦ Réseau ¦ Télécharge une page ou un fichier, appelle une URL. ¦ [Invoke] [Web] [Request]
+alias: iwr, curl, wget
+syn: Invoke-WebRequest [-Uri] <uri> [-OutFile <string>] [-UseBasicParsing]
+-OutFile ¦ [OUT] [FILE] ¦ Enregistre dans un fichier.
+-UseBasicParsing ¦ [USE] [BASIC] [PARSING] ¦ Sans moteur Internet Explorer (5.1).
+ex: Invoke-WebRequest https://intranet.contoso.local -UseBasicParsing | Select-Object StatusCode ¦ Le site répond-il ?
+note: Dans 5.1, `curl` et `wget` sont des alias de cette cmdlet, pas les vrais outils.
+
+@@ ps Invoke-Command ¦ À distance ¦ Exécute du code sur des ordinateurs distants via WinRM. ¦ [Invoke] [Command]
+alias: icm
+syn: Invoke-Command [-ComputerName <string[]>] [-ScriptBlock] <scriptblock>
+note: Repose sur WinRM (ports 5985/5986). Sur un parc où WinRM n’est pas activé, elle échoue : utiliser les partages d’administration, `sc.exe \\PC`, `Get-Service -ComputerName`, CIM en DCOM, PsExec ou RDP.
+see: `New-CimSession`, `psexec`
+
+@@ ps Enter-PSSession ¦ À distance ¦ Ouvre une console PowerShell interactive sur un autre poste via WinRM. ¦ [Enter] [P]ower[S]hell [Session]
+alias: etsn
+note: Exige WinRM côté cible. Alternative sans WinRM : `mstsc /v:PC` ou PsExec.
