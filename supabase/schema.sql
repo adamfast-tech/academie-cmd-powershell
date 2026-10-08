@@ -78,17 +78,9 @@ returns boolean language sql stable security definer set search_path = '' as $$
      and not exists (select 1 from public.profiles where lower(username) = lower(btrim(p_username)));
 $$;
 
--- Supprimer son propre compte (profil, progression et historique suivent en cascade).
-create or replace function public.delete_my_account()
-returns void language plpgsql security definer set search_path = '' as $$
-begin
-  if auth.uid() is null then raise exception 'Non connecté'; end if;
-  delete from auth.users where id = auth.uid();
-end $$;
+-- La suppression de compte passe par l'Edge Function « delete-account » (supabase/functions/delete-account).
 
 revoke execute on function public.handle_new_user() from public, anon, authenticated;
 revoke execute on function public.progress_summary() from public, anon, authenticated;
 revoke execute on function public.username_available(text) from public;
 grant execute on function public.username_available(text) to anon, authenticated;
-revoke execute on function public.delete_my_account() from public, anon;
-grant execute on function public.delete_my_account() to authenticated;

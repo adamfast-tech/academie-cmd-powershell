@@ -275,6 +275,7 @@ function authErr(e){
   if(/rate limit|too many/i.test(m)||/rate_limit/.test(c))return 'Trop de tentatives ou d’e-mails envoyés. Réessaie dans quelques minutes.';
   if(/weak|at least|should be/i.test(m)&&/password/i.test(m))return 'Mot de passe trop faible : 8 caractères minimum.';
   if(/invalid.*email|email.*invalid|unable to validate email/i.test(m))return 'Adresse e-mail invalide.';
+  if(/not authorized|address not authorized|email_address_not_authorized/i.test(m)||c==='email_address_not_authorized')return 'Le serveur refuse d’envoyer l’e-mail de confirmation à cette adresse (envoi d’e-mails non configuré).';
   if(/database error saving new user/i.test(m))return 'Inscription refusée par le serveur (nom d’utilisateur déjà pris ?).';
   if(/failed to fetch|networkerror|load failed/i.test(m))return 'Serveur injoignable : vérifie ta connexion Internet.';
   if(/same.*password|different from the old/i.test(m))return 'Le nouveau mot de passe doit être différent de l’ancien.';
@@ -648,8 +649,8 @@ async function acctAction(act,id){
   if(!Cloud.sb)return;
   if(act==='acct-logout'){try{await Cloud.flush();}catch(e){}await Cloud.sb.auth.signOut();toast('Déconnecté.');return;}
   if(act==='acct-del-yes'){
-    const r=await Cloud.sb.rpc('delete_my_account');
-    if(r.error){AUTH.confirmDel=false;render();acctSay(authErr(r.error));return;}
+    const r=await Cloud.sb.functions.invoke('delete-account',{method:'POST'});
+    if(r.error||!(r.data&&r.data.ok)){AUTH.confirmDel=false;render();acctSay(authErr((r.data&&r.data.error)||r.error));return;}
     Cloud.on=false;await Cloud.sb.auth.signOut();toast('Compte supprimé.');return;
   }
 }
@@ -701,7 +702,7 @@ function viewMe(){
   const lv=levelOf(S.xp);const n=Object.keys(S.done).length;const acc=S.stats.ans?Math.round(S.stats.ok/S.stats.ans*100):0;
   const pp=lv.to?clamp((S.xp-lv.from)/(lv.to-lv.from),0,1):1;
   return `<div class="view">
-    <div class="profile-head"><div class="avatar">&gt;_</div><div><span class="eyebrow">Niveau ${lv.i}</span><h1 style="margin:2px 0 6px">${esc(lv.name)}</h1><div class="meter tape" style="max-width:360px"><i style="width:${pp*100}%"></i></div><p class="small muted" style="margin-top:6px">${lv.to?`${lv.to-S.xp} XP avant « ${esc(lv.next)} »`:'Niveau maximum atteint.'}</p></div></div>
+    <div class="profile-head"><div class="avatar">&gt;_</div><div><span class="eyebrow">Niveau ${lv.i}${Cloud.on&&Cloud.name()?' · '+esc(Cloud.name()):''}</span><h1 style="margin:2px 0 6px">${esc(lv.name)}</h1><div class="meter tape" style="max-width:360px"><i style="width:${pp*100}%"></i></div><p class="small muted" style="margin-top:6px">${lv.to?`${lv.to-S.xp} XP avant « ${esc(lv.next)} »`:'Niveau maximum atteint.'}</p></div></div>
     ${accountPanel()}
     <div class="stat-grid">
       <div class="stat"><b class="tnum">${S.xp}</b><span>XP au total</span></div>

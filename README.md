@@ -16,7 +16,7 @@ Comptes par e-mail + mot de passe + nom d’utilisateur (Supabase Auth). La prog
 et l’historique des leçons sont enregistrés dans Postgres, protégés par RLS : chacun ne lit et n’écrit que ses propres lignes.
 Sans compte, la progression reste dans le navigateur ; elle est fusionnée dans le compte à la première connexion.
 
-Schéma : [`supabase/schema.sql`](supabase/schema.sql).
+Schéma : [`supabase/schema.sql`](supabase/schema.sql). Suppression de compte : Edge Function [`delete-account`](supabase/functions/delete-account/index.ts).
 
 ## Structure
 | Chemin | Rôle |
@@ -26,4 +26,4 @@ Schéma : [`supabase/schema.sql`](supabase/schema.sql).
 | `build.py` | Assemble `index.html` (et `academie.html`, version fichier unique hors ligne) |
 | `vendor/` | supabase-js 2.117.0 (licence MIT) |
 
-Reconstruire après une modification des sources : `python3 build.py`.
+Reconstruire après une modification des sources : `python3 build.py`, puis publier : `git push origin main main:gh-pages` (GitHub Pages sert la branche `gh-pages`).
